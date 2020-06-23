@@ -16,7 +16,9 @@ IF %ERRORLEVEL% NEQ 0 (
    echo ccache not found, removing..
    set speedups=
 )
-IF "%1" == "" set config=debug
+
+IF "%~1" == "" set config=debug
+IF NOT "%~2" == "" set compiler = %%2
 
 echo.
 echo Building %config%...
