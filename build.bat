@@ -17,8 +17,10 @@ IF %ERRORLEVEL% NEQ 0 (
    set speedups=
 )
 
-IF "%~1" == "" set config=debug
-IF NOT "%~2" == "" set compiler = %%2
+IF "%1" == "" set config=debug
+IF NOT "%~2"== "" for /f "tokens=1,* delims= " %%a in ("%*") do set compiler=%%b
+
+echo %compiler%
 
 echo.
 echo Building %config%...
