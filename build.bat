@@ -2,19 +2,19 @@
 
 set config=%1
 
-set genericflags=-D_CRT_SECURE_NO_WARNINGS -c -D_GLFW_WIN32
-set debugflags= %genericflags% -g -DDEBUG
+set genericflags=-D_CRT_SECURE_NO_WARNINGS -Wall -c -D_GLFW_WIN32
+set debugflags= %genericflags% -gcodeview -DDEBUG
 set releaseflags=%genericflags% -O2 -DRELEASE
 set linkerpaths=-LLib\\10.0.17763.0\\um\\x86\\
 set includepaths=-IInclude\\10.0.17763.0\\
-set libraries=-lopengl32 -luser32 -lgdi32 -lshell32 -lkernel32 -ld3d11
+set libraries=-lopengl32 -luser32 -lgdi32 -ld3d11
 set compiler=clang++
-set speedups=ccache
+set caching=ccache
 
-WHERE ccache
+WHERE %caching%
 IF %ERRORLEVEL% NEQ 0 (
-   echo ccache not found, removing..
-   set speedups=
+   echo %caching% not found, removing..
+   set caching=
 )
 
 IF "%1" == "" set config=debug
@@ -34,15 +34,15 @@ rmdir .\bin\%config%\
 GOTO :eof
 
 :Release
-call duration -c %speedups% %compiler% src\Windows.cpp %includepaths% %releaseflags% -o bin\%config%\Windows.o 
+call duration -c %caching% %compiler% src\Windows.cpp %includepaths% %releaseflags% -o bin\%config%\Windows.o 
 GOTO Linking
 
 :Debug
-call duration -c %speedups% %compiler% src\Windows.cpp %includepaths% %debugflags% -o bin\%config%\Windows.o 
+call duration -c %caching% %compiler% src\Windows.cpp %includepaths% %debugflags% -o bin\%config%\Windows.o 
 GOTO Linking
 
 :Linking
-call duration -l %speedups% %compiler% -o bin\%config%\Test.exe bin\%config%\Windows.o %linkerpaths% %libraries%
+call duration -l %compiler% -o bin\%config%\Test.exe bin\%config%\Windows.o %linkerpaths% %libraries%
 
 echo.
 echo ">>>>>>>>>> SUCCESS! <<<<<<<<<<"
