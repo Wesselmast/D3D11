@@ -210,9 +210,9 @@ void refresh_viewport(int32 x, int32 y, uint32 w, uint32 h) {
   context->RSSetViewports(1, viewport);
 }
 
-void swap_buffers() {
+void swap_buffers(bool32 vSync) {
   IDXGISwapChain* swapchain = renderInfo.swapchain;
-  swapchain->Present(1, 0);
+  swapchain->Present(vSync, 0);
 }
 
 void clear_buffer(float32 r, float32 g, float32 b, float32 a) {

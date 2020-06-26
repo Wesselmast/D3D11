@@ -31,6 +31,8 @@ void draw_triangle();
 
 #include "D3DRenderer.cpp"
 
+#include <chrono>
+
 typedef BOOL fptr_wglSwapIntervalEXT(int interval);
 
 void assert(bool condition, const char* message) {
@@ -135,9 +137,13 @@ int main() {
 
   ShowWindow(window, SW_SHOW);
   UpdateWindow(window);
-  
+
+
+  std::chrono::high_resolution_clock timer;
+
   MSG message;
   while(1) {
+    auto start = timer.now();
     while(PeekMessage(&message, 0, 0, 0, PM_REMOVE)) {     //@ToDo: DO THIS BETTER SOMEHOW
       if(message.message == WM_QUIT) goto quit;
       TranslateMessage(&message);
@@ -146,7 +152,9 @@ int main() {
     clear_buffer(1.0f, 0.0f, 1.0f, 1.0f);
     game_update();
     refresh_viewport(0, 0, windowWidth, windowHeight);
-    swap_buffers();
+    swap_buffers(true);
+    float32 dt = std::chrono::duration_cast<std::chrono::duration<float>>(timer.now() - start).count();
+    printf("dt: %f, fps: %f\n", dt, 1.0f/dt); 
   }
  quit:
   close_window(window, hdc, hrc);
