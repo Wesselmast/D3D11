@@ -119,7 +119,7 @@ int main() {
 #endif
 
   const uint16 windowWidth = 620; 
-  const uint16 windowHeight = 480; 
+  const uint16 windowHeight = 620; 
   
   HWND window = create_window(windowWidth, windowHeight, name, false);
   assert(window, "win32: Couldn't create a window!");
@@ -153,7 +153,7 @@ int main() {
     game_update();
     refresh_viewport(0, 0, windowWidth, windowHeight);
     swap_buffers(true);
-    float32 dt = std::chrono::duration_cast<std::chrono::duration<float>>(timer.now() - start).count();
+    float32 dt = std::chrono::duration<float>(timer.now() - start).count();
     printf("dt: %f, fps: %f\n", dt, 1.0f/dt); 
   }
  quit:

@@ -11,6 +11,7 @@ struct RenderInfo {
   D3D11_VIEWPORT* viewport = nullptr;
   ID3DBlob* Vblob = nullptr;
   ID3DBlob* Fblob = nullptr;
+  
 };
 
 static RenderInfo renderInfo; // @CleanUp: Maybe have this not be a global variable
@@ -129,6 +130,38 @@ void init_renderer(HWND window) {
   renderInfo.Fblob = Fblob;
 }
 
+void create_vertex_buffer(ID3D11Buffer** vertexBuffer, const void* vertices, uint32 size, uint32 stride) {
+  ID3D11Device* device = renderInfo.device;
+
+  D3D11_BUFFER_DESC VBDesc = {};
+  VBDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+  VBDesc.Usage = D3D11_USAGE_DEFAULT;
+  VBDesc.CPUAccessFlags = 0;
+  VBDesc.ByteWidth = size;
+  VBDesc.StructureByteStride = stride;
+
+  D3D11_SUBRESOURCE_DATA VBData = {};
+  VBData.pSysMem = vertices;
+
+  d3d_assert(device->CreateBuffer(&VBDesc, &VBData, vertexBuffer));
+}
+
+void create_index_buffer(ID3D11Buffer** indexBuffer, const void* indices, uint32 size, uint32 stride) {
+  ID3D11Device* device = renderInfo.device;
+  
+  D3D11_BUFFER_DESC IBDesc = {};
+  IBDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+  IBDesc.Usage = D3D11_USAGE_DEFAULT;
+  IBDesc.CPUAccessFlags = 0;
+  IBDesc.ByteWidth = size;
+  IBDesc.StructureByteStride = stride;
+
+  D3D11_SUBRESOURCE_DATA IBData = {};
+  IBData.pSysMem = indices;
+
+  d3d_assert(device->CreateBuffer(&IBDesc, &IBData, indexBuffer));
+}
+
 void draw_triangle() {
   ID3D11DeviceContext* context = renderInfo.context;
   ID3D11Device* device = renderInfo.device;
@@ -136,30 +169,30 @@ void draw_triangle() {
   ID3DBlob* Vblob = renderInfo.Vblob;
   ID3DBlob* Fblob = renderInfo.Fblob;  
 
+  //vertex buffer
   float32 vertices[] = {
-     0.0f,  0.5f,
+    -0.5f,  0.5f,
+     0.5f,  0.5f,
      0.5f, -0.5f,
     -0.5f, -0.5f
   };
   
   ID3D11Buffer* vertexBuffer;
-
-  D3D11_BUFFER_DESC VBDesc = {};
-  VBDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-  VBDesc.Usage = D3D11_USAGE_DEFAULT;
-  VBDesc.CPUAccessFlags = 0;
-  VBDesc.ByteWidth = sizeof(vertices);
-  VBDesc.StructureByteStride = sizeof(float32) * 2;
-
-  D3D11_SUBRESOURCE_DATA VBData = {};
-  VBData.pSysMem = vertices;
-
-  d3d_assert(device->CreateBuffer(&VBDesc, &VBData, &vertexBuffer));
-
-  const UINT stride = sizeof(float32) * 2;
-  const UINT offset = 0;
+  uint32 stride = sizeof(float32) * 2;
+  uint32 offset = 0;
+  create_vertex_buffer(&vertexBuffer, &vertices, sizeof(vertices), stride);
   context->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
 
+  //index buffer
+  uint16 indices[] = {
+     0, 1, 2,
+     0, 2, 3
+  };
+
+  ID3D11Buffer* indexBuffer;
+  create_index_buffer(&indexBuffer, &indices, sizeof(indices), sizeof(uint16) * 2);
+  context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R16_UINT, 0);
+   
   ID3D11VertexShader* vertexShader = nullptr;
   ID3D11PixelShader* fragmentShader = nullptr;
   d3d_assert(device->CreateVertexShader(Vblob->GetBufferPointer(), Vblob->GetBufferSize(), nullptr, &vertexShader));
@@ -180,11 +213,10 @@ void draw_triangle() {
   context->OMSetRenderTargets(1, &target, nullptr);  // < might be a problem
   context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-  //context->RSSetViewports(1, viewport);
-
-  context->Draw(3, 0);
+  context->DrawIndexed(sizeof(indices) / sizeof(uint16), 0, 0);
   
   vertexBuffer->Release();
+  indexBuffer->Release();
   vertexShader->Release();
   fragmentShader->Release();
   inputLayout->Release();
