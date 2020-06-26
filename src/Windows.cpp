@@ -22,7 +22,7 @@ void full_path(char* buffer, const char* fileName);
   
 void draw_triangle(float angle);
 
-#include "Math.h"
+#include "Math.cpp"
 #include "Game.cpp"
 
 #include <windows.h>
@@ -135,7 +135,7 @@ int main() {
   }
   
   test_renderer();
-
+  
   ShowWindow(window, SW_SHOW);
   UpdateWindow(window);
 
