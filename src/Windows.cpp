@@ -20,8 +20,9 @@ typedef int32_t bool32;
 void assert(bool condition, const char* message = "Unspecified termination");
 void full_path(char* buffer, const char* fileName);
   
-void draw_triangle();
+void draw_triangle(float angle);
 
+#include "Math.h"
 #include "Game.cpp"
 
 #include <windows.h>
@@ -138,23 +139,27 @@ int main() {
   ShowWindow(window, SW_SHOW);
   UpdateWindow(window);
 
-
   std::chrono::high_resolution_clock timer;
+  float64 time = 0.0;
+  float64 dt = 0.0;
 
   MSG message;
   while(1) {
     auto start = timer.now();
+
     while(PeekMessage(&message, 0, 0, 0, PM_REMOVE)) {     //@ToDo: DO THIS BETTER SOMEHOW
       if(message.message == WM_QUIT) goto quit;
       TranslateMessage(&message);
       DispatchMessage(&message);
     }
+
     clear_buffer(1.0f, 0.0f, 1.0f, 1.0f);
-    game_update();
+    game_update(dt, time);
     refresh_viewport(0, 0, windowWidth, windowHeight);
     swap_buffers(true);
-    float32 dt = std::chrono::duration<float>(timer.now() - start).count();
-    printf("dt: %f, fps: %f\n", dt, 1.0f/dt); 
+
+    dt = std::chrono::duration<float64>(timer.now() - start).count();
+    time += dt;
   }
  quit:
   close_window(window, hdc, hrc);

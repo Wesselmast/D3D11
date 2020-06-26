@@ -162,7 +162,23 @@ void create_index_buffer(ID3D11Buffer** indexBuffer, const void* indices, uint32
   d3d_assert(device->CreateBuffer(&IBDesc, &IBData, indexBuffer));
 }
 
-void draw_triangle() {
+void create_constant_buffer(ID3D11Buffer** constantBuffer, const void* mat, uint32 size) {
+  ID3D11Device* device = renderInfo.device;
+
+  D3D11_BUFFER_DESC CBDesc = {};
+  CBDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+  CBDesc.Usage = D3D11_USAGE_DYNAMIC;
+  CBDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+  CBDesc.ByteWidth = size;
+  CBDesc.StructureByteStride = 0;
+
+  D3D11_SUBRESOURCE_DATA CBData = {};
+  CBData.pSysMem = mat;
+
+  d3d_assert(device->CreateBuffer(&CBDesc, &CBData, constantBuffer));
+}
+
+void draw_triangle(float32 angle) {
   ID3D11DeviceContext* context = renderInfo.context;
   ID3D11Device* device = renderInfo.device;
   ID3D11RenderTargetView* target = renderInfo.target;
@@ -192,6 +208,17 @@ void draw_triangle() {
   ID3D11Buffer* indexBuffer;
   create_index_buffer(&indexBuffer, &indices, sizeof(indices), sizeof(uint16) * 2);
   context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R16_UINT, 0);
+
+  Mat4 mat = {
+     { ((float32)cos(angle)),  ((float32)sin(angle)), 0.0f, 0.0f },
+     { ((float32)-sin(angle)), ((float32)cos(angle)), 0.0f, 0.0f },
+     { 0.0f,                   0.0f,                  1.0f, 0.0f },
+     { 0.0f,                   0.0f,                  0.0f, 1.0f }
+  };
+
+  ID3D11Buffer* constantBuffer;
+  create_constant_buffer(&constantBuffer, &mat, sizeof(mat));
+  context->VSSetConstantBuffers(0, 1, &constantBuffer);
    
   ID3D11VertexShader* vertexShader = nullptr;
   ID3D11PixelShader* fragmentShader = nullptr;
