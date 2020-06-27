@@ -11,7 +11,6 @@ struct RenderInfo {
   D3D11_VIEWPORT* viewport = nullptr;
   ID3DBlob* Vblob = nullptr;
   ID3DBlob* Fblob = nullptr;
-  
 };
 
 static RenderInfo renderInfo; // @CleanUp: Maybe have this not be a global variable
@@ -187,7 +186,7 @@ void draw_triangle(float32 angle) {
 
   //vertex buffer
   float32 vertices[] = {
-    -0.5f,  0.5f,
+    -1.0f,  0.0f,
      0.5f,  0.5f,
      0.5f, -0.5f,
     -0.5f, -0.5f
@@ -209,12 +208,7 @@ void draw_triangle(float32 angle) {
   create_index_buffer(&indexBuffer, &indices, sizeof(indices), sizeof(uint16) * 2);
   context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
-  Mat4 mat = {
-     { ((float32)cos(angle)),  ((float32)sin(angle)), 0.0f, 0.0f },
-     { ((float32)-sin(angle)), ((float32)cos(angle)), 0.0f, 0.0f },
-     { 0.0f,                   0.0f,                  1.0f, 0.0f },
-     { 0.0f,                   0.0f,                  0.0f, 1.0f }
-  };
+  Mat4 mat = mat4_transpose(mat4_z_rotation(angle) * mat4_scaling({3.0f / 4.0f, 1.0f, 1.0f}));
 
   ID3D11Buffer* constantBuffer;
   create_constant_buffer(&constantBuffer, &mat, sizeof(mat));

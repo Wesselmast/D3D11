@@ -144,10 +144,10 @@ int main() {
   float64 dt = 0.0;
 
   MSG message;
-  while(1) {
+  while(true) {
     auto start = timer.now();
 
-    while(PeekMessage(&message, 0, 0, 0, PM_REMOVE)) {     //@ToDo: DO THIS BETTER SOMEHOW
+    while(PeekMessage(&message, 0, 0, 0, PM_REMOVE)) {
       if(message.message == WM_QUIT) goto quit;
       TranslateMessage(&message);
       DispatchMessage(&message);
