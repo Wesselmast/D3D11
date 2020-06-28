@@ -47,6 +47,8 @@ GOTO Linking
 :Linking
 call duration -l %compiler% -o bin\%config%\Test.exe bin\%config%\Windows.o %linkerpaths% %libraries%
 
+del bin\%config%\Windows.o
+
 echo.
 echo ">>>>>>>>>> SUCCESS! <<<<<<<<<<"
 echo.
