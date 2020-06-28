@@ -251,6 +251,7 @@ void draw_triangle(float32 angle) {
   
   vertexBuffer->Release();
   indexBuffer->Release();
+  constantBuffer->Release();
   vertexShader->Release();
   fragmentShader->Release();
   inputLayout->Release();
