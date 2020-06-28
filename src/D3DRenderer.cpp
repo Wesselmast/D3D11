@@ -111,11 +111,11 @@ void init_renderer(HWND window) {
   if(backBuffer) backBuffer->Release();
 
   char path[512];
-  full_path(path, "src\\VertexShader.hlsl");
+  full_path(path, "res\\shaders\\VertexShader.hlsl");
   wchar_t vPath[strlen(path)+1];
   std::mbstowcs(vPath, path, strlen(path)+1);
 
-  full_path(path, "src\\FragmentShader.hlsl");
+  full_path(path, "res\\shaders\\FragmentShader.hlsl");
   wchar_t fPath[strlen(path)+1];
   std::mbstowcs(fPath, path, strlen(path)+1);
 

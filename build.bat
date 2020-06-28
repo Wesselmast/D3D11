@@ -24,9 +24,12 @@ echo %compiler%
 
 echo.
 echo Building %config%...
-echo.
 
 IF NOT EXIST .\bin\%config%\ mkdir .\bin\%config%\
+IF EXIST .\bin\%config%\res echo.
+IF NOT EXIST .\bin\%config%\res (
+   robocopy .\res .\bin\%config%\res /E /NFL /NDL /NJH /NJS
+)
 IF "%config%" == "debug" GOTO Debug
 IF "%config%" == "release" GOTO Release
 echo. && echo ERROR: %config% is not a valid build configuration && echo.
