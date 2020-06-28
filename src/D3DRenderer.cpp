@@ -13,6 +13,7 @@ struct RenderInfo {
   ID3DBlob* Fblob = nullptr;
 };
 
+
 static RenderInfo renderInfo; // @CleanUp: Maybe have this not be a global variable
 
 static void d3d_assert(HRESULT err) {
@@ -186,30 +187,41 @@ void draw_triangle(float32 angle) {
 
   //vertex buffer
   float32 vertices[] = {
-    -1.0f,  0.0f,
-     0.5f,  0.5f,
-     0.5f, -0.5f,
-    -0.5f, -0.5f
+    -1.0f, -1.0f,  1.0f,  1.0f, 0.0f, 0.0f, 
+     1.0f, -1.0f,  1.0f,  0.0f, 1.0f, 0.0f,
+    -1.0f,  1.0f,  1.0f,  0.0f, 0.0f, 1.0f,
+     1.0f,  1.0f,  1.0f,  1.0f, 1.0f, 0.0f,
+
+    -1.0f, -1.0f, -1.0f,  1.0f, 0.0f, 1.0f,
+     1.0f, -1.0f, -1.0f,  0.0f, 1.0f, 1.0f,
+    -1.0f,  1.0f, -1.0f,  0.0f, 0.0f, 0.0f,
+     1.0f,  1.0f, -1.0f,  1.0f, 1.0f, 1.0f
   };
   
   ID3D11Buffer* vertexBuffer;
-  uint32 stride = sizeof(float32) * 2;
+  uint32 stride = sizeof(float32) * 6;
   uint32 offset = 0;
   create_vertex_buffer(&vertexBuffer, &vertices, sizeof(vertices), stride);
   context->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
 
   //index buffer
   uint16 indices[] = {
-     0, 1, 2,
-     0, 2, 3
+     0, 1, 2, 3, 7, 1, 5, 4, 7, 6, 2, 4, 0, 1
   };
 
   ID3D11Buffer* indexBuffer;
-  create_index_buffer(&indexBuffer, &indices, sizeof(indices), sizeof(uint16) * 2);
+  create_index_buffer(&indexBuffer, &indices, sizeof(indices), sizeof(uint16));
   context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
-  Mat4 mat = mat4_transpose(mat4_z_rotation(angle) * mat4_scaling({3.0f / 4.0f, 1.0f, 1.0f}));
+  float32 cMouseX =  mousePos.x / (windowWidth  * 0.5f) - 1.0f; 
+  float32 cMouseY = -mousePos.y / (windowHeight * 0.5f) + 1.0f; 
 
+  Mat4 mat = 
+    mat4_z_rotation(angle) *
+    mat4_x_rotation(angle) *  
+    mat4_translation({cMouseX, cMouseY, 4.0f}) *
+    mat4_perspective(1.0f, 3.0f/4.0f, 0.5f, 10.0f);       
+  
   ID3D11Buffer* constantBuffer;
   create_constant_buffer(&constantBuffer, &mat, sizeof(mat));
   context->VSSetConstantBuffers(0, 1, &constantBuffer);
@@ -224,7 +236,8 @@ void draw_triangle(float32 angle) {
   
   ID3D11InputLayout* inputLayout = nullptr;
   const D3D11_INPUT_ELEMENT_DESC inputElementDesc[] = {
-    { "Position", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+    { "Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0 },
+    { "Color",    0, DXGI_FORMAT_R8G8B8A8_UNORM,  0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
   };
 
   d3d_assert(device->CreateInputLayout(inputElementDesc, sizeof(inputElementDesc) / sizeof(D3D11_INPUT_ELEMENT_DESC),
@@ -232,7 +245,7 @@ void draw_triangle(float32 angle) {
 
   context->IASetInputLayout(inputLayout);
   context->OMSetRenderTargets(1, &target, nullptr);  // < might be a problem
-  context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+  context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
   context->DrawIndexed(sizeof(indices) / sizeof(uint16), 0, 0);
   

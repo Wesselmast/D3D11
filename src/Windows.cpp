@@ -23,6 +23,11 @@ void full_path(char* buffer, const char* fileName);
 void draw_triangle(float angle);
 
 #include "Math.cpp"
+
+static Vec2 mousePos; 
+static const uint16 windowWidth = 620; 
+static const uint16 windowHeight = 480; 
+
 #include "Game.cpp"
 
 #include <windows.h>
@@ -62,6 +67,11 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     init_renderer(hwnd);
     return 0;
   }
+  case WM_MOUSEMOVE: {
+    mousePos.x = LOWORD(lParam);
+    mousePos.y = HIWORD(lParam);
+    return 0;
+  };
   case WM_DESTROY: {
     PostQuitMessage(0);
     return 0;
@@ -118,9 +128,6 @@ int main() {
 #elif defined(RELEASE)
   strcat(name, " : RELEASE");
 #endif
-
-  const uint16 windowWidth = 620; 
-  const uint16 windowHeight = 620; 
   
   HWND window = create_window(windowWidth, windowHeight, name, false);
   assert(window, "win32: Couldn't create a window!");

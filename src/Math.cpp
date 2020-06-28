@@ -7,11 +7,41 @@ struct Mat4 {
   float32 m3[4];
 };
 
+struct Vec2 {
+  float32 x;
+  float32 y;
+};
+
 struct Vec3 {
   float32 x;
   float32 y;
   float32 z;
 };
+
+float32 pi() {
+  return acos(-1.0f);
+}
+
+float32 degrees_to_radians() {
+  return pi() / 180.0f;
+}
+
+void mat4_print(Mat4 mat) {
+  printf("%f, %f, %f, %f\n", mat.m0[0], mat.m0[1], mat.m0[2], mat.m0[3]);
+  printf("%f, %f, %f, %f\n", mat.m1[0], mat.m1[1], mat.m1[2], mat.m1[3]);
+  printf("%f, %f, %f, %f\n", mat.m2[0], mat.m2[1], mat.m2[2], mat.m2[3]);
+  printf("%f, %f, %f, %f\n", mat.m3[0], mat.m3[1], mat.m3[2], mat.m3[3]);
+}
+
+Mat4 mat4_identity() {
+  Mat4 mat = {
+    { 1.0f,  0.0f,  0.0f,  0.0f },
+    { 0.0f,  1.0f,  0.0f,  0.0f },
+    { 0.0f,  0.0f,  1.0f,  0.0f },
+    { 0.0f,  0.0f,  0.0f,  1.0f }
+  };
+  return mat;
+}
 
 Mat4 operator*(Mat4 a, Mat4 b) {  //@Performance: SIMD
   Mat4 mat = {};
@@ -39,11 +69,18 @@ Mat4 operator*(Mat4 a, Mat4 b) {  //@Performance: SIMD
   return mat;
 }
 
-void mat4_print(Mat4 mat) {
-  printf("%f, %f, %f, %f\n", mat.m0[0], mat.m0[1], mat.m0[2], mat.m0[3]);
-  printf("%f, %f, %f, %f\n", mat.m1[0], mat.m1[1], mat.m1[2], mat.m1[3]);
-  printf("%f, %f, %f, %f\n", mat.m2[0], mat.m2[1], mat.m2[2], mat.m2[3]);
-  printf("%f, %f, %f, %f\n", mat.m3[0], mat.m3[1], mat.m3[2], mat.m3[3]);
+Mat4 mat4_perspective(float32 width, float32 height, float32 near, float32 far) {
+  Mat4 mat = {};
+
+  float32 twoNear = near + near;
+  float32 fRange = far / (far - near);
+  mat.m0[0] = twoNear / width; 
+  mat.m1[1] = twoNear / height;
+  mat.m2[2] = fRange;
+  mat.m2[3] = 1.0f;
+  mat.m3[2] = -fRange * near;
+
+  return mat;
 }
 
 Mat4 mat4_transpose(Mat4 mat) { //@Performance: SIMD
@@ -82,6 +119,17 @@ Mat4 mat4_z_rotation(float angle) {
   return mat;
 }
 
+Mat4 mat4_x_rotation(float angle) {
+  Mat4 mat = {
+     { 1.0f, 0.0f,                   0.0f,                  0.0f },
+     { 0.0f, ((float32)cos(angle)),  ((float32)sin(angle)), 0.0f }, 
+     { 0.0f, ((float32)-sin(angle)), ((float32)cos(angle)), 0.0f }, 
+     { 0.0f, 0.0f,                   0.0f,                  1.0f }
+  }; 
+  return mat;
+}
+
+
 Mat4 mat4_scaling(Vec3 v) {
   Mat4 mat = {
      { v.x , 0.0f, 0.0f, 0.0f },
@@ -94,10 +142,10 @@ Mat4 mat4_scaling(Vec3 v) {
 
 Mat4 mat4_translation(Vec3 v) {
   Mat4 mat = {
-     { 1.0f, 0.0f, 0.0f, v.x },
-     { 0.0f, 1.0f, 0.0f, v.y },
-     { 0.0f, 0.0f, 1.0f, v.z },
-     { 0.0f, 0.0f, 0.0f, 1.0f}
+     { 1.0f, 0.0f, 0.0f, 0.0f },
+     { 0.0f, 1.0f, 0.0f, 0.0f },
+     { 0.0f, 0.0f, 1.0f, 0.0f },
+     { v.x,  v.y,  v.z,  1.0f}
   };
   return mat;
 }
