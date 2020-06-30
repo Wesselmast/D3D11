@@ -220,8 +220,10 @@ void draw_triangle(float32 angle) {
     mat4_z_rotation(angle) *
     mat4_x_rotation(angle) *  
     mat4_translation({cMouseX, cMouseY, 4.0f}) *
-    mat4_perspective(1.0f, 3.0f/4.0f, 0.5f, 10.0f);       
+    mat4_perspective(1.0f, 3.0f/4.0f, 0.5f, 10.0f);
   
+  mat = mat4_transpose(mat);
+
   ID3D11Buffer* constantBuffer;
   create_constant_buffer(&constantBuffer, &mat, sizeof(mat));
   context->VSSetConstantBuffers(0, 1, &constantBuffer);

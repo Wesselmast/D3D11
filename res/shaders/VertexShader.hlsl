@@ -4,7 +4,7 @@ struct VSout {
 };
 
 cbuffer CBuf {
-  row_major matrix transform;
+  matrix transform;
 };
 
 VSout main(float3 pos : Position, float3 color : Color) {

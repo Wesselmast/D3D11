@@ -86,6 +86,9 @@ Mat4 mat4_perspective(float32 width, float32 height, float32 near, float32 far) 
 Mat4 mat4_transpose(Mat4 mat) { //@Performance: SIMD
   Mat4 result = {};
   
+
+  printf("MAT:\n");
+  mat4_print(mat);
   result.m0[0] = mat.m0[0];
   result.m0[1] = mat.m1[0];
   result.m0[2] = mat.m2[0]; 
@@ -105,6 +108,10 @@ Mat4 mat4_transpose(Mat4 mat) { //@Performance: SIMD
   result.m3[1] = mat.m1[3]; 
   result.m3[2] = mat.m2[3]; 
   result.m3[3] = mat.m3[3];
+  
+
+  printf("RESULT:\n");
+  mat4_print(result);
 
   return result;
 }
