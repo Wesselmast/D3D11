@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <cstdlib>
 #include <stdio.h>
 #include <string.h>
 
@@ -20,13 +21,13 @@ typedef int32_t bool32;
 void assert(bool condition, const char* message = "Unspecified termination");
 void full_path(char* buffer, const char* fileName);
   
-void draw_triangle(float32 angle);
-
 #include "Math.cpp"
 
+void draw_triangle(Vec3 position, float32 rotation, Vec3 scale);
+
 static Vec2 mousePos; 
-static const uint16 windowWidth = 620; 
-static const uint16 windowHeight = 480; 
+static const uint16 windowWidth = 620;   //@Note: These dont update. The mark the start size
+static const uint16 windowHeight = 480;  //@Note: These dont update. The mark the start size
 
 #include "Game.cpp"
 
@@ -59,7 +60,7 @@ void full_path(char* buffer, const char* fileName) {
 
 LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   switch(uMsg) {
-  case WM_SIZE: {
+  case WM_SIZE: { 
     refresh_viewport(0, 0, LOWORD(lParam), HIWORD(lParam)); 
     return 0;
   }
@@ -122,6 +123,8 @@ void close_window(HWND& hwnd, HDC& hdc, HGLRC& hrc) {
 } 
 
 int main() {  
+  srand(time(0));
+
   char name[256] = "LittleTest";
 #if defined(DEBUG)
   strcat(name, " : DEBUG");
@@ -159,9 +162,8 @@ int main() {
       DispatchMessage(&message);
     }
 
-    clear_buffer(1.0f, 0.0f, 1.0f, 1.0f);
+    clear_buffer(0.5f, 0.0f, 0.5f, 1.0f);
     game_update(dt, time);
-    refresh_viewport(0, 0, windowWidth, windowHeight);
     swap_buffers(true);
 
     dt = std::chrono::duration<float64>(timer.now() - start).count();

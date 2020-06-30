@@ -18,12 +18,23 @@ struct Vec3 {
   float32 z;
 };
 
+struct Vec4 {
+  float32 x;
+  float32 y;
+  float32 z;
+  float32 w;
+};
+
 float32 pi() {
   return acos(-1.0f);
 }
 
 float32 degrees_to_radians() {
   return pi() / 180.0f;
+}
+
+Vec3 vec3_from_scalar(float32 scalar) {
+  return {scalar, scalar, scalar};
 }
 
 void mat4_print(Mat4 mat) {
