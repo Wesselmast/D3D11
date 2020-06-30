@@ -20,7 +20,7 @@ typedef int32_t bool32;
 void assert(bool condition, const char* message = "Unspecified termination");
 void full_path(char* buffer, const char* fileName);
   
-void draw_triangle(float angle);
+void draw_triangle(float32 angle);
 
 #include "Math.cpp"
 
@@ -153,7 +153,6 @@ int main() {
   MSG message;
   while(true) {
     auto start = timer.now();
-
     while(PeekMessage(&message, 0, 0, 0, PM_REMOVE)) {
       if(message.message == WM_QUIT) goto quit;
       TranslateMessage(&message);
