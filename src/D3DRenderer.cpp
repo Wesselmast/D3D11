@@ -18,6 +18,7 @@ struct RenderObjects {
   ID3D11Buffer** vertexBuffers = nullptr;
   uint32* vertexBufferStrides = nullptr;
   ID3D11Buffer** indexBuffers = nullptr;
+  ID3D11Buffer** translationBuffers = nullptr;
   uint32* indexBufferSizes = nullptr;
   ID3D11Buffer** faceColorBuffers = nullptr;
   ID3D11VertexShader** vertexShaders = nullptr;
@@ -25,6 +26,8 @@ struct RenderObjects {
   ID3D11InputLayout** inputLayouts = nullptr;
   uint32 count = 0;
 };
+
+const uint32 RENDER_OBJECT_LIMIT = 300;     // @ToDo: Make this a hard capped memory limit instead
 
 static RenderInfo renderInfo; // @CleanUp: Maybe have this not be a global variable
 static RenderObjects renderObjects;
@@ -171,14 +174,15 @@ void init_renderer(HWND window) {
   renderInfo.Vblob = Vblob;
   renderInfo.Fblob = Fblob;
 
-  renderObjects.vertexBuffers = (ID3D11Buffer**)malloc(sizeof(int32));
-  renderObjects.indexBuffers = (ID3D11Buffer**)malloc(sizeof(int32));
-  renderObjects.vertexBufferStrides = (uint32*)malloc(sizeof(int32));
-  renderObjects.indexBufferSizes = (uint32*)malloc(sizeof(int32));
-  renderObjects.faceColorBuffers = (ID3D11Buffer**)malloc(sizeof(int32));
-  renderObjects.vertexShaders = (ID3D11VertexShader**)malloc(sizeof(int32));
-  renderObjects.fragmentShaders = (ID3D11PixelShader**)malloc(sizeof(int32));
-  renderObjects.inputLayouts = (ID3D11InputLayout**)malloc(sizeof(int32));
+  renderObjects.vertexBuffers = (ID3D11Buffer**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11Buffer*));
+  renderObjects.indexBuffers = (ID3D11Buffer**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11Buffer*));
+  renderObjects.translationBuffers = (ID3D11Buffer**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11Buffer*));
+  renderObjects.vertexBufferStrides = (uint32*)malloc(RENDER_OBJECT_LIMIT * sizeof(uint32));
+  renderObjects.indexBufferSizes = (uint32*)malloc(RENDER_OBJECT_LIMIT * sizeof(uint32));
+  renderObjects.faceColorBuffers = (ID3D11Buffer**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11Buffer*));
+  renderObjects.vertexShaders = (ID3D11VertexShader**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11VertexShader*));
+  renderObjects.fragmentShaders = (ID3D11PixelShader**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11PixelShader*));
+  renderObjects.inputLayouts = (ID3D11InputLayout**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11InputLayout*));
 }
 
 void create_vertex_buffer(ID3D11Buffer** vertexBuffer, const void* vertices, uint32 size, uint32 stride) {
@@ -230,50 +234,54 @@ void create_constant_buffer(ID3D11Buffer** constantBuffer, const void* mat, uint
 }
 
 uint32 add_to_renderer(ID3D11Buffer* vertexBuffer,        ID3D11Buffer* indexBuffer,
+		       ID3D11Buffer* translationBuffer,
 		       ID3D11Buffer* faceColorBuffer,     ID3D11VertexShader* vertexShader,
 		       ID3D11PixelShader* fragmentShader, ID3D11InputLayout* inputLayout,
 		       uint32 vertexBufferStride,         uint32 indexBufferSize) {
   uint32 i = renderObjects.count;
-
-  uint32 size = (i + 1) * sizeof(uint32);
-
-  renderObjects.vertexBuffers = (ID3D11Buffer**)realloc(renderObjects.vertexBuffers, size);
+  
   renderObjects.vertexBuffers[i] = vertexBuffer;
-
-  renderObjects.indexBuffers = (ID3D11Buffer**)realloc(renderObjects.indexBuffers, size);
   renderObjects.indexBuffers[i] = indexBuffer;
-
-  renderObjects.faceColorBuffers = (ID3D11Buffer**)realloc(renderObjects.faceColorBuffers, size);
+  renderObjects.translationBuffers[i] = translationBuffer;
   renderObjects.faceColorBuffers[i] = faceColorBuffer;
-
-  renderObjects.vertexShaders = (ID3D11VertexShader**)realloc(renderObjects.vertexShaders, size);
   renderObjects.vertexShaders[i] = vertexShader;
-
-  renderObjects.fragmentShaders = (ID3D11PixelShader**)realloc(renderObjects.fragmentShaders, size);
   renderObjects.fragmentShaders[i] = fragmentShader;
-
-  renderObjects.inputLayouts = (ID3D11InputLayout**)realloc(renderObjects.inputLayouts, size);
   renderObjects.inputLayouts[i] = inputLayout;
-
-  renderObjects.vertexBufferStrides = (uint32*)realloc(renderObjects.vertexBufferStrides, size);
   renderObjects.vertexBufferStrides[i] = vertexBufferStride;
-
-  renderObjects.indexBufferSizes = (uint32*)realloc(renderObjects.indexBufferSizes, size);
   renderObjects.indexBufferSizes[i] = indexBufferSize;
 
   renderObjects.count++;
   return i;
 }
 
+void set_object_transform(uint32 index, Vec3 position, float32 rotation, Vec3 scale) {
+    Mat4 mat = 
+      mat4_scaling(scale) *
+      mat4_z_rotation(rotation) *
+      mat4_x_rotation(rotation) *
+      mat4_translation(position) *
+      mat4_perspective(1.0f, 3.0f/4.0f, 0.5f, 10.0f); //@ToDo: abstract to camera
+    
+    mat = mat4_transpose(mat);
+    
+    ID3D11Buffer* translationBuffer;
+    create_constant_buffer(&translationBuffer, &mat, sizeof(mat));
+    if(renderObjects.translationBuffers[index]) (renderObjects.translationBuffers[index])->Release();
+    renderObjects.translationBuffers[index] = translationBuffer;
+}  
+
 void render_loop() {
   ID3D11DeviceContext* context = renderInfo.context;
   ID3D11RenderTargetView* target = renderInfo.target;
   ID3D11DepthStencilView* dsv = renderInfo.dsv;
+  
+  context->OMSetRenderTargets(1, &target, dsv);  // < might be a problem
 
   for(uint32 i = 0; i < renderObjects.count; i++) {
     ID3D11Buffer* vertexBuffer = renderObjects.vertexBuffers[i];
     uint32 vertexBufferStride = renderObjects.vertexBufferStrides[i];
     ID3D11Buffer* indexBuffer = renderObjects.indexBuffers[i];
+    ID3D11Buffer* translationBuffer = renderObjects.translationBuffers[i];
     uint32 indexBufferSize = renderObjects.indexBufferSizes[i];
     ID3D11Buffer* faceColorBuffer = renderObjects.faceColorBuffers[i];
     ID3D11VertexShader* vertexShader = renderObjects.vertexShaders[i];
@@ -281,37 +289,30 @@ void render_loop() {
     ID3D11InputLayout* inputLayout = renderObjects.inputLayouts[i];
     uint32 offset = 0;
 
+    assert(vertexBuffer);
+    assert(indexBuffer);
+    assert(faceColorBuffer);
+    assert(vertexShader);
+    assert(fragmentShader);
+    assert(inputLayout);
+
     context->IASetVertexBuffers(0, 1, &vertexBuffer, &vertexBufferStride, &offset);
     context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R16_UINT, 0);
     context->PSSetConstantBuffers(0, 1, &faceColorBuffer);
 
-
-    Mat4 mat = 
-      //mat4_scaling(scale) *
-      //mat4_z_rotation(rotation) *
-      //mat4_x_rotation(rotation) *
-      mat4_translation({0.0f, 0.0f, 4.0f}) *
-      mat4_perspective(1.0f, 3.0f/4.0f, 0.5f, 10.0f); //@ToDo: abstract to camera
-    
-    mat = mat4_transpose(mat);
-    
-    ID3D11Buffer* translationBuffer;
-    create_constant_buffer(&translationBuffer, &mat, sizeof(mat));
-    context->VSSetConstantBuffers(0, 1, &translationBuffer);
-
-
+    if(translationBuffer) {
+      context->VSSetConstantBuffers(0, 1, &translationBuffer);
+    }
     context->VSSetShader(vertexShader, nullptr, 0);
     context->PSSetShader(fragmentShader, nullptr, 0);
     context->IASetInputLayout(inputLayout);
-    context->OMSetRenderTargets(1, &target, dsv);  // < might be a problem
     context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     
     context->DrawIndexed(indexBufferSize, 0, 0);  
-    translationBuffer->Release();
   }
 }
 
-void draw_triangle() {
+uint32 draw_triangle() {
   ID3D11Device* device = renderInfo.device;
   ID3DBlob* Vblob = renderInfo.Vblob;
   ID3DBlob* Fblob = renderInfo.Fblob;  
@@ -372,11 +373,16 @@ void draw_triangle() {
   d3d_assert(device->CreateInputLayout(inputElementDesc, sizeof(inputElementDesc) / sizeof(D3D11_INPUT_ELEMENT_DESC),
 				       Vblob->GetBufferPointer(), Vblob->GetBufferSize(), &inputLayout));
 
-  add_to_renderer(
-    vertexBuffer, indexBuffer,
-    faceColorBuffer, vertexShader,
-    fragmentShader, inputLayout,
-    stride, sizeof(indices) / sizeof(uint16));
+  uint32 index = add_to_renderer(vertexBuffer, indexBuffer,
+			 nullptr,
+			 faceColorBuffer, vertexShader,
+			 fragmentShader, inputLayout,
+			 stride, sizeof(indices) / sizeof(uint16));
+  
+
+  printf("%d\n", index);
+
+  return index;
 }
 
 void refresh_viewport(int32 x, int32 y, uint32 w, uint32 h) {
@@ -412,4 +418,18 @@ void clear_buffer(float32 r, float32 g, float32 b, float32 a) {
   float32 color[] = { r, g , b, a };
   context->ClearRenderTargetView(target, color);
   context->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH, 1.0f, 0);
+}
+
+void renderer_cleanup() {
+  for(uint32 i = 0; i < renderObjects.count; i++) {
+    (renderObjects.vertexBuffers[i])->Release();
+    (renderObjects.indexBuffers[i])->Release();
+    (renderObjects.translationBuffers[i])->Release();
+    (renderObjects.faceColorBuffers[i])->Release();
+    (renderObjects.vertexShaders[i])->Release();
+    (renderObjects.fragmentShaders[i])->Release();
+    (renderObjects.inputLayouts[i])->Release();  
+  }
+  free(renderObjects.vertexBufferStrides);
+  free(renderObjects.indexBufferSizes);
 }

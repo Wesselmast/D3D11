@@ -23,11 +23,12 @@ void full_path(char* buffer, const char* fileName);
   
 #include "Math.cpp"
 
-void draw_triangle();
+void set_object_transform(uint32 index, Vec3 position, float32 rotation, Vec3 scale);
+uint32 draw_triangle();
 
 static Vec2 mousePos; 
-static const uint16 windowWidth = 620;   //@Note: These dont update. The mark the start size
-static const uint16 windowHeight = 480;  //@Note: These dont update. The mark the start size
+static const uint16 windowWidth = 1920;   //@Note: These dont update. The mark the start size
+static const uint16 windowHeight = 1080;  //@Note: These dont update. The mark the start size
 
 #include "Game.cpp"
 
@@ -153,7 +154,7 @@ int main() {
   float64 time = 0.0;
   float64 dt = 0.0;
 
-  draw_triangle();
+  game_start();
 
   MSG message;
   while(true) {
@@ -173,6 +174,7 @@ int main() {
     time += dt;
   }
  quit:
+  renderer_cleanup();
   close_window(window, hdc, hrc);
   return 0;
 }

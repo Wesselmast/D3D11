@@ -22,13 +22,14 @@ IF NOT [%caching%] == [] (
 IF [%1] == [] set config=debug
 IF NOT [%~2] == [] for /f "tokens=1,* delims= " %%a in ("%*") do set compiler=%%b
 
-echo %compiler%
-
-echo.
-echo Building %config%...
-
 IF NOT EXIST .\bin\%config%\ mkdir .\bin\%config%\
 robocopy .\res .\bin\%config%\res /E /NFL /NDL /NJH /NJS
+
+echo.
+echo Compiler: %compiler%
+
+echo.
+echo Compiling %config%...
 
 IF [%config%] == [debug] GOTO Debug
 IF [%config%] == [release] GOTO Release
@@ -45,10 +46,13 @@ call duration -c %caching% %compiler% src\Windows.cpp %includepaths% %debugflags
 GOTO Linking
 
 :Linking
+echo.
+echo Linking %config%...
 call duration -l %compiler% -o bin\%config%\Test.exe bin\%config%\Windows.o %linkerpaths% %libraries%
 
 del bin\%config%\Windows.o
 
 echo.
 echo ">>>>>>>>>> SUCCESS! <<<<<<<<<<"
+echo.
 echo.
