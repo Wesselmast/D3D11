@@ -23,7 +23,7 @@ void full_path(char* buffer, const char* fileName);
   
 #include "Math.cpp"
 
-void draw_triangle(Vec3 position, float32 rotation, Vec3 scale);
+void draw_triangle();
 
 static Vec2 mousePos; 
 static const uint16 windowWidth = 620;   //@Note: These dont update. The mark the start size
@@ -153,6 +153,8 @@ int main() {
   float64 time = 0.0;
   float64 dt = 0.0;
 
+  draw_triangle();
+
   MSG message;
   while(true) {
     auto start = timer.now();
@@ -163,6 +165,7 @@ int main() {
     }
 
     clear_buffer(0.5f, 0.0f, 0.5f, 1.0f);
+    render_loop();
     game_update(dt, time);
     swap_buffers(true);
 

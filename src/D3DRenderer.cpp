@@ -14,8 +14,20 @@ struct RenderInfo {
   ID3DBlob* Fblob = nullptr;
 };
 
+struct RenderObjects {
+  ID3D11Buffer** vertexBuffers = nullptr;
+  uint32* vertexBufferStrides = nullptr;
+  ID3D11Buffer** indexBuffers = nullptr;
+  uint32* indexBufferSizes = nullptr;
+  ID3D11Buffer** faceColorBuffers = nullptr;
+  ID3D11VertexShader** vertexShaders = nullptr;
+  ID3D11PixelShader** fragmentShaders = nullptr;
+  ID3D11InputLayout** inputLayouts = nullptr;
+  uint32 count = 0;
+};
 
 static RenderInfo renderInfo; // @CleanUp: Maybe have this not be a global variable
+static RenderObjects renderObjects;
 
 static void d3d_assert(HRESULT err) {
   if(FAILED(err)) {
@@ -158,7 +170,15 @@ void init_renderer(HWND window) {
   renderInfo.dsv = dsv;
   renderInfo.Vblob = Vblob;
   renderInfo.Fblob = Fblob;
-  
+
+  renderObjects.vertexBuffers = (ID3D11Buffer**)malloc(sizeof(int32));
+  renderObjects.indexBuffers = (ID3D11Buffer**)malloc(sizeof(int32));
+  renderObjects.vertexBufferStrides = (uint32*)malloc(sizeof(int32));
+  renderObjects.indexBufferSizes = (uint32*)malloc(sizeof(int32));
+  renderObjects.faceColorBuffers = (ID3D11Buffer**)malloc(sizeof(int32));
+  renderObjects.vertexShaders = (ID3D11VertexShader**)malloc(sizeof(int32));
+  renderObjects.fragmentShaders = (ID3D11PixelShader**)malloc(sizeof(int32));
+  renderObjects.inputLayouts = (ID3D11InputLayout**)malloc(sizeof(int32));
 }
 
 void create_vertex_buffer(ID3D11Buffer** vertexBuffer, const void* vertices, uint32 size, uint32 stride) {
@@ -209,11 +229,90 @@ void create_constant_buffer(ID3D11Buffer** constantBuffer, const void* mat, uint
   d3d_assert(device->CreateBuffer(&CBDesc, &CBData, constantBuffer));
 }
 
-void draw_triangle(Vec3 position, float32 rotation, Vec3 scale) {
+uint32 add_to_renderer(ID3D11Buffer* vertexBuffer,        ID3D11Buffer* indexBuffer,
+		       ID3D11Buffer* faceColorBuffer,     ID3D11VertexShader* vertexShader,
+		       ID3D11PixelShader* fragmentShader, ID3D11InputLayout* inputLayout,
+		       uint32 vertexBufferStride,         uint32 indexBufferSize) {
+  uint32 i = renderObjects.count;
+
+  uint32 size = (i + 1) * sizeof(uint32);
+
+  renderObjects.vertexBuffers = (ID3D11Buffer**)realloc(renderObjects.vertexBuffers, size);
+  renderObjects.vertexBuffers[i] = vertexBuffer;
+
+  renderObjects.indexBuffers = (ID3D11Buffer**)realloc(renderObjects.indexBuffers, size);
+  renderObjects.indexBuffers[i] = indexBuffer;
+
+  renderObjects.faceColorBuffers = (ID3D11Buffer**)realloc(renderObjects.faceColorBuffers, size);
+  renderObjects.faceColorBuffers[i] = faceColorBuffer;
+
+  renderObjects.vertexShaders = (ID3D11VertexShader**)realloc(renderObjects.vertexShaders, size);
+  renderObjects.vertexShaders[i] = vertexShader;
+
+  renderObjects.fragmentShaders = (ID3D11PixelShader**)realloc(renderObjects.fragmentShaders, size);
+  renderObjects.fragmentShaders[i] = fragmentShader;
+
+  renderObjects.inputLayouts = (ID3D11InputLayout**)realloc(renderObjects.inputLayouts, size);
+  renderObjects.inputLayouts[i] = inputLayout;
+
+  renderObjects.vertexBufferStrides = (uint32*)realloc(renderObjects.vertexBufferStrides, size);
+  renderObjects.vertexBufferStrides[i] = vertexBufferStride;
+
+  renderObjects.indexBufferSizes = (uint32*)realloc(renderObjects.indexBufferSizes, size);
+  renderObjects.indexBufferSizes[i] = indexBufferSize;
+
+  renderObjects.count++;
+  return i;
+}
+
+void render_loop() {
   ID3D11DeviceContext* context = renderInfo.context;
-  ID3D11Device* device = renderInfo.device;
   ID3D11RenderTargetView* target = renderInfo.target;
   ID3D11DepthStencilView* dsv = renderInfo.dsv;
+
+  for(uint32 i = 0; i < renderObjects.count; i++) {
+    ID3D11Buffer* vertexBuffer = renderObjects.vertexBuffers[i];
+    uint32 vertexBufferStride = renderObjects.vertexBufferStrides[i];
+    ID3D11Buffer* indexBuffer = renderObjects.indexBuffers[i];
+    uint32 indexBufferSize = renderObjects.indexBufferSizes[i];
+    ID3D11Buffer* faceColorBuffer = renderObjects.faceColorBuffers[i];
+    ID3D11VertexShader* vertexShader = renderObjects.vertexShaders[i];
+    ID3D11PixelShader* fragmentShader = renderObjects.fragmentShaders[i];
+    ID3D11InputLayout* inputLayout = renderObjects.inputLayouts[i];
+    uint32 offset = 0;
+
+    context->IASetVertexBuffers(0, 1, &vertexBuffer, &vertexBufferStride, &offset);
+    context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R16_UINT, 0);
+    context->PSSetConstantBuffers(0, 1, &faceColorBuffer);
+
+
+    Mat4 mat = 
+      //mat4_scaling(scale) *
+      //mat4_z_rotation(rotation) *
+      //mat4_x_rotation(rotation) *
+      mat4_translation({0.0f, 0.0f, 4.0f}) *
+      mat4_perspective(1.0f, 3.0f/4.0f, 0.5f, 10.0f); //@ToDo: abstract to camera
+    
+    mat = mat4_transpose(mat);
+    
+    ID3D11Buffer* translationBuffer;
+    create_constant_buffer(&translationBuffer, &mat, sizeof(mat));
+    context->VSSetConstantBuffers(0, 1, &translationBuffer);
+
+
+    context->VSSetShader(vertexShader, nullptr, 0);
+    context->PSSetShader(fragmentShader, nullptr, 0);
+    context->IASetInputLayout(inputLayout);
+    context->OMSetRenderTargets(1, &target, dsv);  // < might be a problem
+    context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    
+    context->DrawIndexed(indexBufferSize, 0, 0);  
+    translationBuffer->Release();
+  }
+}
+
+void draw_triangle() {
+  ID3D11Device* device = renderInfo.device;
   ID3DBlob* Vblob = renderInfo.Vblob;
   ID3DBlob* Fblob = renderInfo.Fblob;  
 
@@ -232,9 +331,7 @@ void draw_triangle(Vec3 position, float32 rotation, Vec3 scale) {
   
   ID3D11Buffer* vertexBuffer;
   uint32 stride = sizeof(float32) * 3;
-  uint32 offset = 0;
   create_vertex_buffer(&vertexBuffer, &vertices, sizeof(vertices), stride);
-  context->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
 
   //index buffer
   uint16 indices[] = {
@@ -248,20 +345,6 @@ void draw_triangle(Vec3 position, float32 rotation, Vec3 scale) {
 
   ID3D11Buffer* indexBuffer;
   create_index_buffer(&indexBuffer, &indices, sizeof(indices), sizeof(uint16));
-  context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R16_UINT, 0);
-
-  Mat4 mat = 
-    mat4_scaling(scale) *
-    mat4_z_rotation(rotation) *
-    mat4_x_rotation(rotation) *
-    mat4_translation({position.x, position.y, position.z + 4.0f}) *
-    mat4_perspective(1.0f, 3.0f/4.0f, 0.5f, 10.0f); //@ToDo: abstract to camera
-  
-  mat = mat4_transpose(mat);
-
-  ID3D11Buffer* translationBuffer;
-  create_constant_buffer(&translationBuffer, &mat, sizeof(mat));
-  context->VSSetConstantBuffers(0, 1, &translationBuffer);
 
   float32 faceColors[] = {
      1.0f, 0.0f, 1.0f, 1.0f,
@@ -274,15 +357,12 @@ void draw_triangle(Vec3 position, float32 rotation, Vec3 scale) {
   
   ID3D11Buffer* faceColorBuffer;
   create_constant_buffer(&faceColorBuffer, &faceColors, sizeof(faceColors));
-  context->PSSetConstantBuffers(0, 1, &faceColorBuffer);
    
   ID3D11VertexShader* vertexShader = nullptr;
   ID3D11PixelShader* fragmentShader = nullptr;
   d3d_assert(device->CreateVertexShader(Vblob->GetBufferPointer(), Vblob->GetBufferSize(), nullptr, &vertexShader));
   d3d_assert(device->CreatePixelShader(Fblob->GetBufferPointer(), Fblob->GetBufferSize(), nullptr, &fragmentShader));
 
-  context->VSSetShader(vertexShader, nullptr, 0);
-  context->PSSetShader(fragmentShader, nullptr, 0);
   
   ID3D11InputLayout* inputLayout = nullptr;
   const D3D11_INPUT_ELEMENT_DESC inputElementDesc[] = {
@@ -292,19 +372,11 @@ void draw_triangle(Vec3 position, float32 rotation, Vec3 scale) {
   d3d_assert(device->CreateInputLayout(inputElementDesc, sizeof(inputElementDesc) / sizeof(D3D11_INPUT_ELEMENT_DESC),
 				       Vblob->GetBufferPointer(), Vblob->GetBufferSize(), &inputLayout));
 
-  context->IASetInputLayout(inputLayout);
-  context->OMSetRenderTargets(1, &target, dsv);  // < might be a problem
-  context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-  context->DrawIndexed(sizeof(indices) / sizeof(uint16), 0, 0);
-  
-  vertexBuffer->Release();
-  indexBuffer->Release();
-  translationBuffer->Release();
-  faceColorBuffer->Release();
-  vertexShader->Release();
-  fragmentShader->Release();
-  inputLayout->Release();
+  add_to_renderer(
+    vertexBuffer, indexBuffer,
+    faceColorBuffer, vertexShader,
+    fragmentShader, inputLayout,
+    stride, sizeof(indices) / sizeof(uint16));
 }
 
 void refresh_viewport(int32 x, int32 y, uint32 w, uint32 h) {
