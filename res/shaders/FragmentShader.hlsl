@@ -1,6 +1,6 @@
-cbuffer CBuf {
-  float4 faceColors[6];
-}
+//cbuffer CBuf {
+//  float4 faceColors[6];
+//}
 
 Texture2D tex;
 SamplerState s;

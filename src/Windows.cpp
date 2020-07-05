@@ -26,7 +26,8 @@ void full_path(char* buffer, const char* fileName);
 
 void set_object_transform(uint32 index, Vec3 position, float32 rotation, Vec3 scale);
 void set_object_texture(uint32 index, Bitmap* bitmap);
-uint32 draw_triangle();
+uint32 draw_cube();
+uint32 draw_plane();
 
 static Vec2 mousePos; 
 static const uint16 windowWidth = 620;   //@Note: These dont update. The mark the start size
@@ -154,7 +155,7 @@ int main() {
 
   std::chrono::high_resolution_clock timer;
   float64 time = 0.0;
-  float64 dt = 0.0;
+  float64 dt = 0.015;
 
   game_start();
 
@@ -176,7 +177,6 @@ int main() {
     time += dt;
   }
  quit:
-  renderer_cleanup();
   close_window(window, hdc, hrc);
   return 0;
 }
