@@ -22,10 +22,19 @@ struct RenderObjects {
   ID3D11PixelShader** fragmentShaders = nullptr;
   ID3D11InputLayout** inputLayouts = nullptr;
   ID3D11ShaderResourceView** resourceViews = nullptr;
+  ID3D11SamplerState** samplers = nullptr;
   uint32 count = 0;
 };
 
-const uint32 RENDER_OBJECT_LIMIT = 300;     // @ToDo: Make this a hard capped memory limit instead
+struct RenderObjectInfo {
+  float32* vertices = nullptr;
+  uint32 vSize;
+  uint32 stride;
+  uint16* indices = nullptr;
+  uint32 iSize;
+}; 
+
+const uint32 RENDER_OBJECT_LIMIT = 300;     // @ToDo: Make a project-wide memory cap
 
 static RenderInfo renderInfo; // @CleanUp: Maybe have this not be a global variable
 static RenderObjects renderObjects;
@@ -79,6 +88,7 @@ void allocate_render_objects() {
   renderObjects.fragmentShaders = (ID3D11PixelShader**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11PixelShader*));
   renderObjects.inputLayouts = (ID3D11InputLayout**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11InputLayout*));
   renderObjects.resourceViews = (ID3D11ShaderResourceView**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11ShaderResourceView*));
+  renderObjects.samplers = (ID3D11SamplerState**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11SamplerState*));
 }
 
 void init_renderer(HWND window) {
@@ -250,11 +260,10 @@ void create_constant_buffer(ID3D11Buffer** constantBuffer, const void* mat, uint
   d3d_assert(device->CreateBuffer(&CBDesc, &CBData, constantBuffer));
 }
 
-void set_object_transform(uint32 index, Vec3 position, float32 rotation, Vec3 scale) {
+void set_object_transform(uint32 index, Vec3 position, Vec3 rotation, Vec3 scale) {
     Mat4 mat = 
       mat4_scaling(scale) *
-      mat4_z_rotation(rotation) *
-      mat4_x_rotation(rotation) *
+      mat4_euler_rotation(rotation) *
       mat4_translation(position) *
       mat4_perspective(1.0f, 3.0f/4.0f, 0.5f, 100.0f); //@ToDo: abstract to camera
     
@@ -274,7 +283,6 @@ void set_object_texture(uint32 index, Bitmap* bmp) {
 }
 
 void render_loop() {
-  ID3D11Device* device = renderInfo.device;
   ID3D11DeviceContext* context = renderInfo.context;
   ID3D11RenderTargetView* target = renderInfo.target;
   ID3D11DepthStencilView* dsv = renderInfo.dsv;
@@ -290,26 +298,18 @@ void render_loop() {
     ID3D11ShaderResourceView* resourceView = renderObjects.resourceViews[i];
     ID3D11VertexShader* vertexShader = renderObjects.vertexShaders[i];
     ID3D11PixelShader* fragmentShader = renderObjects.fragmentShaders[i];
+    ID3D11SamplerState* sampler = renderObjects.samplers[i];
     ID3D11InputLayout* inputLayout = renderObjects.inputLayouts[i];
     uint32 offset = 0;
 
     context->IASetVertexBuffers(0, 1, &vertexBuffer, &vertexBufferStride, &offset);
     context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R16_UINT, 0);
-
-    if(translationBuffer) context->VSSetConstantBuffers(0, 1, &translationBuffer);
+    context->VSSetConstantBuffers(0, 1, &translationBuffer);
 
     if(resourceView) {
-      ID3D11SamplerState* sampler;
-      D3D11_SAMPLER_DESC samplerDesc = {};
-      samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-      samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-      samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-      samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-      device->CreateSamplerState(&samplerDesc, &sampler);
-
+      assert(sampler, "In order to display a resource view the renderer needs a sampler!");
       context->PSSetSamplers(0, 1, &sampler);
       context->PSSetShaderResources(0, 1, &resourceView);
-      sampler->Release();
     }
 
     context->VSSetShader(vertexShader, nullptr, 0);
@@ -321,10 +321,77 @@ void render_loop() {
   }
 }
 
-uint32 draw_cube() {
+uint32 draw_object(RenderObjectInfo* info) {
   ID3D11Device* device = renderInfo.device;
+  float32* vertices = info->vertices;
+  uint32 vSize = info->vSize;
+  uint32 stride = info->stride;
+  uint16* indices = info->indices;
+  uint32 iSize = info->iSize;
   uint32 index = renderObjects.count;
 
+  ID3D11Buffer* vertexBuffer;
+  create_vertex_buffer(&vertexBuffer, vertices, vSize, stride);
+  renderObjects.vertexBuffers[index] = vertexBuffer;
+  renderObjects.vertexBufferStrides[index] = stride;
+
+  ID3D11Buffer* indexBuffer;
+  create_index_buffer(&indexBuffer, indices, iSize, sizeof(uint16));
+  renderObjects.indexBuffers[index] = indexBuffer;
+  renderObjects.indexBufferSizes[index] = iSize / sizeof(uint16);
+  
+  char path[512];
+  ID3DBlob* vBlob;
+  full_path(path, "res\\shaders\\DefaultVertex.hlsl");
+  wchar_t vPath[strlen(path)+1];
+  std::mbstowcs(vPath, path, strlen(path)+1);
+  d3d_assert(compile_vertex_shader(&vBlob, vPath));
+
+  ID3DBlob* fBlob;
+  full_path(path, "res\\shaders\\DefaultFragment.hlsl");
+  wchar_t fPath[strlen(path)+1];
+  std::mbstowcs(fPath, path, strlen(path)+1);
+  d3d_assert(compile_fragment_shader(&fBlob, fPath));
+
+  ID3D11VertexShader* vertexShader = nullptr;
+  d3d_assert(device->CreateVertexShader(vBlob->GetBufferPointer(), vBlob->GetBufferSize(), nullptr, &vertexShader));
+  renderObjects.vertexShaders[index] = vertexShader;
+
+  ID3D11PixelShader* fragmentShader = nullptr;
+  d3d_assert(device->CreatePixelShader(fBlob->GetBufferPointer(), fBlob->GetBufferSize(), nullptr, &fragmentShader));
+  renderObjects.fragmentShaders[index] = fragmentShader;
+
+  ID3D11SamplerState* sampler;
+  D3D11_SAMPLER_DESC samplerDesc = {};
+  samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+  samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+  samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+  samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+  d3d_assert(device->CreateSamplerState(&samplerDesc, &sampler));
+  renderObjects.samplers[index] = sampler;
+
+  ID3D11InputLayout* inputLayout = nullptr;
+  const D3D11_INPUT_ELEMENT_DESC inputElementDesc[] = {
+    { "Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0 },
+    { "TexCoord", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+  };
+
+  uint32 inputCount = sizeof(inputElementDesc) / sizeof(D3D11_INPUT_ELEMENT_DESC);
+  d3d_assert(device->CreateInputLayout(inputElementDesc, inputCount, vBlob->GetBufferPointer(), vBlob->GetBufferSize(), &inputLayout));
+  renderObjects.inputLayouts[index] = inputLayout;
+
+  renderObjects.resourceViews[index] = nullptr;
+  renderObjects.translationBuffers[index] = nullptr;
+  set_object_transform(index, vec3_from_scalar(0.0f), vec3_from_scalar(0.0f), vec3_from_scalar(1.0f));
+
+  vBlob->Release();
+  fBlob->Release();
+ 
+  renderObjects.count++;
+  return index;
+}
+
+uint32 draw_cube() {
   float32 vertices[] = {
     -1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
      1.0f, -1.0f, -1.0f, 1.0f, 0.0f,
@@ -337,12 +404,6 @@ uint32 draw_cube() {
      1.0f,  1.0f,  1.0f, 1.0f, 1.0f
   };  
 
-  ID3D11Buffer* vertexBuffer;
-  uint32 stride = sizeof(float32) * 5;
-  create_vertex_buffer(&vertexBuffer, &vertices, sizeof(vertices), stride);
-  renderObjects.vertexBuffers[index] = vertexBuffer;
-  renderObjects.vertexBufferStrides[index] = stride;
-
   uint16 indices[] = {
      0, 2, 1,  2, 3, 1,
      1, 3, 5,  3, 7, 5,
@@ -352,57 +413,17 @@ uint32 draw_cube() {
      0, 1, 4,  1, 5, 4
   };
 
-  ID3D11Buffer* indexBuffer;
-  create_index_buffer(&indexBuffer, &indices, sizeof(indices), sizeof(uint16));
-  renderObjects.indexBuffers[index] = indexBuffer;
-  renderObjects.indexBufferSizes[index] = sizeof(indices) / sizeof(uint16);
-  
-  char path[512];
-  ID3DBlob* vBlob;
-  full_path(path, "res\\shaders\\DefaultVertex.hlsl");
-  wchar_t vPath[strlen(path)+1];
-  std::mbstowcs(vPath, path, strlen(path)+1);
-  d3d_assert(compile_vertex_shader(&vBlob, vPath));
+  RenderObjectInfo info = {};
+  info.vertices = &vertices[0];
+  info.stride = sizeof(float32) * 5;
+  info.vSize = sizeof(vertices);
+  info.indices = &indices[0];
+  info.iSize = sizeof(indices);
 
-  ID3DBlob* fBlob;
-  full_path(path, "res\\shaders\\DefaultFragment.hlsl");
-  wchar_t fPath[strlen(path)+1];
-  std::mbstowcs(fPath, path, strlen(path)+1);
-  d3d_assert(compile_fragment_shader(&fBlob, fPath));
-
-  ID3D11VertexShader* vertexShader = nullptr;
-  d3d_assert(device->CreateVertexShader(vBlob->GetBufferPointer(), vBlob->GetBufferSize(), nullptr, &vertexShader));
-  renderObjects.vertexShaders[index] = vertexShader;
-
-  ID3D11PixelShader* fragmentShader = nullptr;
-  d3d_assert(device->CreatePixelShader(fBlob->GetBufferPointer(), fBlob->GetBufferSize(), nullptr, &fragmentShader));
-  renderObjects.fragmentShaders[index] = fragmentShader;
-
-  ID3D11InputLayout* inputLayout = nullptr;
-  const D3D11_INPUT_ELEMENT_DESC inputElementDesc[] = {
-    { "Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0 },
-    { "TexCoord", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
-  };
-
-  uint32 inputCount = sizeof(inputElementDesc) / sizeof(D3D11_INPUT_ELEMENT_DESC);
-  d3d_assert(device->CreateInputLayout(inputElementDesc, inputCount, vBlob->GetBufferPointer(), vBlob->GetBufferSize(), &inputLayout));
-  renderObjects.inputLayouts[index] = inputLayout;
-
-  renderObjects.resourceViews[index] = nullptr;
-  renderObjects.translationBuffers[index] = nullptr;
-  set_object_transform(index, {0.0f, 0.0f, 0.0f}, 0.0f, {1.0f, 1.0f, 1.0f});
-
-  vBlob->Release();
-  fBlob->Release();
- 
-  renderObjects.count++;
-  return index;
+  return draw_object(&info);
 }
 
 uint32 draw_plane() {
-  ID3D11Device* device = renderInfo.device;
-  uint32 index = renderObjects.count;
-
   float32 vertices[] = {
     -1.0f, -1.0f,  0.0f, 0.0f, 0.0f,
      1.0f, -1.0f,  0.0f, 1.0f, 0.0f,
@@ -410,61 +431,18 @@ uint32 draw_plane() {
      1.0f,  1.0f,  0.0f, 1.0f, 1.0f,
   };  
 
-  ID3D11Buffer* vertexBuffer;
-  uint32 stride = sizeof(float32) * 5;
-  create_vertex_buffer(&vertexBuffer, &vertices, sizeof(vertices), stride);
-  renderObjects.vertexBuffers[index] = vertexBuffer;
-  renderObjects.vertexBufferStrides[index] = stride;
-
   uint16 indices[] = {
      1, 2, 0,  1, 3, 2
   };
 
-  ID3D11Buffer* indexBuffer;
-  create_index_buffer(&indexBuffer, &indices, sizeof(indices), sizeof(uint16));
-  renderObjects.indexBuffers[index] = indexBuffer;
-  renderObjects.indexBufferSizes[index] = sizeof(indices) / sizeof(uint16);
-  
-  char path[512];
-  ID3DBlob* vBlob;
-  full_path(path, "res\\shaders\\DefaultVertex.hlsl");
-  wchar_t vPath[strlen(path)+1];
-  std::mbstowcs(vPath, path, strlen(path)+1);
-  d3d_assert(compile_vertex_shader(&vBlob, vPath));
+  RenderObjectInfo info = {};
+  info.vertices = &vertices[0];
+  info.stride = sizeof(float32) * 5;
+  info.vSize = sizeof(vertices);
+  info.indices = &indices[0];
+  info.iSize = sizeof(indices);
 
-  ID3DBlob* fBlob;
-  full_path(path, "res\\shaders\\DefaultFragment.hlsl");
-  wchar_t fPath[strlen(path)+1];
-  std::mbstowcs(fPath, path, strlen(path)+1);
-  d3d_assert(compile_fragment_shader(&fBlob, fPath));
-
-  ID3D11VertexShader* vertexShader = nullptr;
-  d3d_assert(device->CreateVertexShader(vBlob->GetBufferPointer(), vBlob->GetBufferSize(), nullptr, &vertexShader));
-  renderObjects.vertexShaders[index] = vertexShader;
-
-  ID3D11PixelShader* fragmentShader = nullptr;
-  d3d_assert(device->CreatePixelShader(fBlob->GetBufferPointer(), fBlob->GetBufferSize(), nullptr, &fragmentShader));
-  renderObjects.fragmentShaders[index] = fragmentShader;
-
-  ID3D11InputLayout* inputLayout = nullptr;
-  const D3D11_INPUT_ELEMENT_DESC inputElementDesc[] = {
-    { "Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0 },
-    { "TexCoord", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
-  };
-
-  uint32 inputCount = sizeof(inputElementDesc) / sizeof(D3D11_INPUT_ELEMENT_DESC);
-  d3d_assert(device->CreateInputLayout(inputElementDesc, inputCount, vBlob->GetBufferPointer(), vBlob->GetBufferSize(), &inputLayout));
-  renderObjects.inputLayouts[index] = inputLayout;
-
-  renderObjects.resourceViews[index] = nullptr;
-  renderObjects.translationBuffers[index] = nullptr;
-  set_object_transform(index, {0.0f, 0.0f, 0.0f}, 0.0f, {1.0f, 1.0f, 1.0f});
- 
-  vBlob->Release();
-  fBlob->Release();
-
-  renderObjects.count++;
-  return index;
+  return draw_object(&info);
 }
 
 void refresh_viewport(int32 x, int32 y, uint32 w, uint32 h) {

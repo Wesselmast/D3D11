@@ -24,7 +24,7 @@ void full_path(char* buffer, const char* fileName);
 #include "Math.cpp"
 #include "File.cpp"
 
-void set_object_transform(uint32 index, Vec3 position, float32 rotation, Vec3 scale);
+void set_object_transform(uint32 index, Vec3 position, Vec3 rotation, Vec3 scale);
 void set_object_texture(uint32 index, Bitmap* bitmap);
 uint32 draw_cube();
 uint32 draw_plane();

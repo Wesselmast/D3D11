@@ -130,6 +130,16 @@ Mat4 mat4_z_rotation(float angle) {
   return mat;
 }
 
+Mat4 mat4_y_rotation(float angle) {
+  Mat4 mat = {
+     { ((float32)cos(angle)), 0.0f, ((float32)-sin(angle)), 0.0f },
+     { 0.0f,                  1.0f, 0.0f,                   0.0f },
+     { ((float32)sin(angle)), 0.0f, ((float32)cos(angle)),  0.0f },
+     { 0.0f, 0.0f,                   0.0f,                  1.0f }
+  }; 
+  return mat;
+}
+
 Mat4 mat4_x_rotation(float angle) {
   Mat4 mat = {
      { 1.0f, 0.0f,                   0.0f,                  0.0f },
@@ -140,6 +150,13 @@ Mat4 mat4_x_rotation(float angle) {
   return mat;
 }
 
+Mat4 mat4_euler_rotation(Vec3 rot) {
+  Mat4 mat = 
+    mat4_z_rotation(rot.z) *
+    mat4_y_rotation(rot.y) *
+    mat4_x_rotation(rot.x);
+  return mat;
+}
 
 Mat4 mat4_scaling(Vec3 v) {
   Mat4 mat = {
