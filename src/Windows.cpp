@@ -22,13 +22,15 @@ void assert(bool condition, const char* message = "Unspecified termination");
 void full_path(char* buffer, const char* fileName);
   
 #include "Math.cpp"
+#include "File.cpp"
 
 void set_object_transform(uint32 index, Vec3 position, float32 rotation, Vec3 scale);
+void set_object_texture(uint32 index, Bitmap* bitmap);
 uint32 draw_triangle();
 
 static Vec2 mousePos; 
-static const uint16 windowWidth = 1920;   //@Note: These dont update. The mark the start size
-static const uint16 windowHeight = 1080;  //@Note: These dont update. The mark the start size
+static const uint16 windowWidth = 620;   //@Note: These dont update. The mark the start size
+static const uint16 windowHeight = 480;  //@Note: These dont update. The mark the start size
 
 #include "Game.cpp"
 

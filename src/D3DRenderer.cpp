@@ -24,6 +24,7 @@ struct RenderObjects {
   ID3D11VertexShader** vertexShaders = nullptr;
   ID3D11PixelShader** fragmentShaders = nullptr;
   ID3D11InputLayout** inputLayouts = nullptr;
+  ID3D11ShaderResourceView** resourceViews = nullptr;
   uint32 count = 0;
 };
 
@@ -183,6 +184,7 @@ void init_renderer(HWND window) {
   renderObjects.vertexShaders = (ID3D11VertexShader**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11VertexShader*));
   renderObjects.fragmentShaders = (ID3D11PixelShader**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11PixelShader*));
   renderObjects.inputLayouts = (ID3D11InputLayout**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11InputLayout*));
+  renderObjects.resourceViews = (ID3D11ShaderResourceView**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11ShaderResourceView*));
 }
 
 void create_vertex_buffer(ID3D11Buffer** vertexBuffer, const void* vertices, uint32 size, uint32 stride) {
@@ -199,6 +201,38 @@ void create_vertex_buffer(ID3D11Buffer** vertexBuffer, const void* vertices, uin
   VBData.pSysMem = vertices;
 
   d3d_assert(device->CreateBuffer(&VBDesc, &VBData, vertexBuffer));
+}
+
+void create_texture(ID3D11ShaderResourceView** view, Bitmap* bmp) {
+  ID3D11Device* device = renderInfo.device;
+
+  D3D11_TEXTURE2D_DESC textureDesc = {};
+  textureDesc.Width = bmp->width;
+  textureDesc.Height = bmp->height;
+  textureDesc.MipLevels = 1;
+  textureDesc.ArraySize = 1;
+  textureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+  textureDesc.SampleDesc.Count = 1;
+  textureDesc.SampleDesc.Quality = 0;
+  textureDesc.Usage = D3D11_USAGE_DEFAULT;
+  textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+  textureDesc.CPUAccessFlags = 0;
+  textureDesc.MiscFlags = 0;
+  
+  D3D11_SUBRESOURCE_DATA textureData = {};
+  textureData.pSysMem = bmp->memory;
+  textureData.SysMemPitch = bmp->width * 4;
+    
+  ID3D11Texture2D* texture;
+  d3d_assert(device->CreateTexture2D(&textureDesc, &textureData, &texture));
+  
+  D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc = {};
+  viewDesc.Format = textureDesc.Format;
+  viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+  viewDesc.Texture2D.MostDetailedMip = 0;
+  viewDesc.Texture2D.MipLevels = 1;
+  
+  d3d_assert(device->CreateShaderResourceView(texture, &viewDesc, view));
 }
 
 void create_index_buffer(ID3D11Buffer** indexBuffer, const void* indices, uint32 size, uint32 stride) {
@@ -234,7 +268,7 @@ void create_constant_buffer(ID3D11Buffer** constantBuffer, const void* mat, uint
 }
 
 uint32 add_to_renderer(ID3D11Buffer* vertexBuffer,        ID3D11Buffer* indexBuffer,
-		       ID3D11Buffer* translationBuffer,
+		       ID3D11Buffer* translationBuffer,   ID3D11ShaderResourceView* resourceView,
 		       ID3D11Buffer* faceColorBuffer,     ID3D11VertexShader* vertexShader,
 		       ID3D11PixelShader* fragmentShader, ID3D11InputLayout* inputLayout,
 		       uint32 vertexBufferStride,         uint32 indexBufferSize) {
@@ -244,6 +278,7 @@ uint32 add_to_renderer(ID3D11Buffer* vertexBuffer,        ID3D11Buffer* indexBuf
   renderObjects.indexBuffers[i] = indexBuffer;
   renderObjects.translationBuffers[i] = translationBuffer;
   renderObjects.faceColorBuffers[i] = faceColorBuffer;
+  renderObjects.resourceViews[i] = resourceView;
   renderObjects.vertexShaders[i] = vertexShader;
   renderObjects.fragmentShaders[i] = fragmentShader;
   renderObjects.inputLayouts[i] = inputLayout;
@@ -270,7 +305,15 @@ void set_object_transform(uint32 index, Vec3 position, float32 rotation, Vec3 sc
     renderObjects.translationBuffers[index] = translationBuffer;
 }  
 
+void set_object_texture(uint32 index, Bitmap* bmp) {    
+    ID3D11ShaderResourceView* resourceView;
+    create_texture(&resourceView, bmp);
+    if(renderObjects.resourceViews[index]) (renderObjects.resourceViews[index])->Release();
+    renderObjects.resourceViews[index] = resourceView;
+}
+
 void render_loop() {
+  ID3D11Device* device = renderInfo.device;
   ID3D11DeviceContext* context = renderInfo.context;
   ID3D11RenderTargetView* target = renderInfo.target;
   ID3D11DepthStencilView* dsv = renderInfo.dsv;
@@ -284,6 +327,7 @@ void render_loop() {
     ID3D11Buffer* translationBuffer = renderObjects.translationBuffers[i];
     uint32 indexBufferSize = renderObjects.indexBufferSizes[i];
     ID3D11Buffer* faceColorBuffer = renderObjects.faceColorBuffers[i];
+    ID3D11ShaderResourceView* resourceView = renderObjects.resourceViews[i];
     ID3D11VertexShader* vertexShader = renderObjects.vertexShaders[i];
     ID3D11PixelShader* fragmentShader = renderObjects.fragmentShaders[i];
     ID3D11InputLayout* inputLayout = renderObjects.inputLayouts[i];
@@ -303,6 +347,20 @@ void render_loop() {
     if(translationBuffer) {
       context->VSSetConstantBuffers(0, 1, &translationBuffer);
     }
+    if(resourceView) {
+      ID3D11SamplerState* sampler;
+      D3D11_SAMPLER_DESC samplerDesc = {};
+      samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+      samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+      samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+      samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+      device->CreateSamplerState(&samplerDesc, &sampler);
+
+      context->PSSetSamplers(0, 1, &sampler);
+      context->PSSetShaderResources(0, 1, &resourceView);
+      sampler->Release();
+    }
+
     context->VSSetShader(vertexShader, nullptr, 0);
     context->PSSetShader(fragmentShader, nullptr, 0);
     context->IASetInputLayout(inputLayout);
@@ -312,26 +370,26 @@ void render_loop() {
   }
 }
 
-uint32 draw_triangle() {
+uint32 draw_triangle(Vec3 pos, float rot, Vec3 scale) {
   ID3D11Device* device = renderInfo.device;
   ID3DBlob* Vblob = renderInfo.Vblob;
   ID3DBlob* Fblob = renderInfo.Fblob;  
 
   //vertex buffer
   float32 vertices[] = {
-    -1.0f, -1.0f, -1.0f, 
-     1.0f, -1.0f, -1.0f,
-    -1.0f,  1.0f, -1.0f,
-     1.0f,  1.0f, -1.0f,
+    -1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
+     1.0f, -1.0f, -1.0f, 1.0f, 0.0f,
+    -1.0f,  1.0f, -1.0f, 0.0f, 1.0f,
+     1.0f,  1.0f, -1.0f, 1.0f, 1.0f,
 
-    -1.0f, -1.0f,  1.0f,
-     1.0f, -1.0f,  1.0f,
-    -1.0f,  1.0f,  1.0f,
-     1.0f,  1.0f,  1.0f 
+    -1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 
+     1.0f, -1.0f,  1.0f, 1.0f, 0.0f,
+    -1.0f,  1.0f,  1.0f, 0.0f, 1.0f,
+     1.0f,  1.0f,  1.0f, 1.0f, 1.0f
   };
   
   ID3D11Buffer* vertexBuffer;
-  uint32 stride = sizeof(float32) * 3;
+  uint32 stride = sizeof(float32) * 5;
   create_vertex_buffer(&vertexBuffer, &vertices, sizeof(vertices), stride);
 
   //index buffer
@@ -364,25 +422,28 @@ uint32 draw_triangle() {
   d3d_assert(device->CreateVertexShader(Vblob->GetBufferPointer(), Vblob->GetBufferSize(), nullptr, &vertexShader));
   d3d_assert(device->CreatePixelShader(Fblob->GetBufferPointer(), Fblob->GetBufferSize(), nullptr, &fragmentShader));
 
-  
   ID3D11InputLayout* inputLayout = nullptr;
   const D3D11_INPUT_ELEMENT_DESC inputElementDesc[] = {
-    { "Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0 }
+    { "Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0 },
+    { "TexCoord", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
   };
 
   d3d_assert(device->CreateInputLayout(inputElementDesc, sizeof(inputElementDesc) / sizeof(D3D11_INPUT_ELEMENT_DESC),
 				       Vblob->GetBufferPointer(), Vblob->GetBufferSize(), &inputLayout));
 
   uint32 index = add_to_renderer(vertexBuffer, indexBuffer,
-			 nullptr,
-			 faceColorBuffer, vertexShader,
-			 fragmentShader, inputLayout,
-			 stride, sizeof(indices) / sizeof(uint16));
+				 nullptr,      nullptr,
+				 faceColorBuffer, vertexShader,
+				 fragmentShader, inputLayout,
+				 stride, sizeof(indices) / sizeof(uint16));
   
 
-  printf("%d\n", index);
-
+  set_object_transform(index, pos, rot, scale);
   return index;
+}
+
+uint32 draw_triangle() {
+  return draw_triangle({0.0f, 0.0f, 0.0f}, 0.0f, {1.0f, 1.0f, 1.0f});
 }
 
 void refresh_viewport(int32 x, int32 y, uint32 w, uint32 h) {
@@ -424,6 +485,8 @@ void renderer_cleanup() {
   for(uint32 i = 0; i < renderObjects.count; i++) {
     (renderObjects.vertexBuffers[i])->Release();
     (renderObjects.indexBuffers[i])->Release();
+    if(renderObjects.translationBuffers[i]) (renderObjects.translationBuffers[i])->Release();
+    if(renderObjects.resourceViews[i]) (renderObjects.resourceViews[i])->Release();
     (renderObjects.translationBuffers[i])->Release();
     (renderObjects.faceColorBuffers[i])->Release();
     (renderObjects.vertexShaders[i])->Release();
