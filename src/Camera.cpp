@@ -33,7 +33,7 @@ void set_camera_transform(const uint32& camera, Vec3 position, Vec3 rotation) {
   Mat4 mat = 
     mat4_euler_rotation(rotation) *
     mat4_translation(position);
-  cameras.viewMatrixes[camera] = mat4_inverse(mat);
+  cameras.viewMatrixes[camera] = mat;
   cameras.projectionMatrixes[camera] = calculate_perspective();
 }
 
