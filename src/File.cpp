@@ -1,4 +1,6 @@
 #pragma once
+#include <stdlib.h>
+#include <string.h>
 
 struct FileInfo {
   char* memory;
@@ -10,6 +12,14 @@ struct Bitmap {
   uint16 height;
   char* memory;
 };
+
+struct ModelInfo {
+  float32* vertices = nullptr;
+  uint32 vSize;
+  uint32 stride;
+  uint16* indices = nullptr;
+  uint32 iSize;
+}; 
 
 #pragma pack(push, 1)
 struct BitmapHeader {
@@ -64,4 +74,63 @@ Bitmap load_bitmap(const char* path) {
   bmp.height = (uint16)header->height;
   bmp.memory = info.memory + header->offset;
   return bmp;
+}
+
+ModelInfo load_obj(const char* path) {
+  char fPath[512];
+  full_path(fPath, path);
+  FILE* file = fopen(fPath, "r");
+  assert(file, "Trying to load a file that doesn't exist!");
+
+  char* pLine;
+  char line[256]; 
+  uint32 offset = 0;
+  uint32 indexCount = 0;
+  uint32 length = 0;
+  
+  float32 vertices[160000] = {};
+  uint16 indices[160000] = {};
+
+  while((pLine = fgets(line, sizeof(line), file))) {
+    if(line[0] == 'v' && line[1] == ' ') {
+      char* num;
+      uint32 field = 0;
+      while((num = strtok(pLine, " "))) {
+	pLine = nullptr; 
+	if(!strcmp(num, "v")) continue;
+	vertices[offset + field] = atof(num);
+	field++;
+      }
+      offset += 5;
+    }
+    if(line[0] == 'f' && line[1] == ' ') {
+      char* num;
+      char* buf[3];
+      uint8 index = 0;
+      while((num = strtok(pLine, " "))) {
+	pLine = nullptr; 
+	if(!strcmp(num, "f")) continue;
+	buf[index] = num;
+	index++;
+      }
+      index = 0;
+      while(index < 3) {
+	char* ptr = strchr(buf[index], '/');
+	if(ptr) *ptr = '\0';
+	indices[indexCount] = atoi(buf[index]);
+	indexCount++;
+	index++;
+      }
+    }
+    length++;
+  }
+  fclose(file);
+
+  ModelInfo info = {};
+  info.vertices = &vertices[0];
+  info.vSize = offset * sizeof(float32);
+  info.stride = 5 * sizeof(float32);
+  info.indices = &indices[0];
+  info.iSize = indexCount * sizeof(uint16);
+  return info;
 }

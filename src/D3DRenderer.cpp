@@ -26,14 +26,6 @@ struct RenderObjects {
   uint32 count = 0;
 };
 
-struct RenderObjectInfo {
-  float32* vertices = nullptr;
-  uint32 vSize;
-  uint32 stride;
-  uint16* indices = nullptr;
-  uint32 iSize;
-}; 
-
 const uint32 RENDER_OBJECT_LIMIT = 300;     // @ToDo: Make a project-wide memory cap
 
 static RenderInfo renderInfo; // @CleanUp: Maybe have this not be a global variable
@@ -321,7 +313,7 @@ void render_loop() {
   }
 }
 
-uint32 draw_object(RenderObjectInfo* info) {
+uint32 draw_object(ModelInfo* info) {
   ID3D11Device* device = renderInfo.device;
   float32* vertices = info->vertices;
   uint32 vSize = info->vSize;
@@ -413,7 +405,7 @@ uint32 draw_cube() {
      0, 1, 4,  1, 5, 4
   };
 
-  RenderObjectInfo info = {};
+  ModelInfo info = {};
   info.vertices = &vertices[0];
   info.stride = sizeof(float32) * 5;
   info.vSize = sizeof(vertices);
@@ -435,13 +427,18 @@ uint32 draw_plane() {
      1, 2, 0,  1, 3, 2
   };
 
-  RenderObjectInfo info = {};
+  ModelInfo info = {};
   info.vertices = &vertices[0];
   info.stride = sizeof(float32) * 5;
   info.vSize = sizeof(vertices);
   info.indices = &indices[0];
   info.iSize = sizeof(indices);
 
+  return draw_object(&info);
+}
+
+uint32 draw_model() {
+  ModelInfo info = load_obj("res/models/Monkey.obj");
   return draw_object(&info);
 }
 

@@ -28,6 +28,7 @@ void set_object_transform(uint32 index, Vec3 position, Vec3 rotation, Vec3 scale
 void set_object_texture(uint32 index, Bitmap* bitmap);
 uint32 draw_cube();
 uint32 draw_plane();
+uint32 draw_model();
 
 static Vec2 mousePos; 
 static const uint16 windowWidth = 620;   //@Note: These dont update. The mark the start size
