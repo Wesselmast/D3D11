@@ -28,12 +28,13 @@ void set_object_transform(uint32 index, Vec3 position, Vec3 rotation, Vec3 scale
 void set_object_texture(uint32 index, Bitmap* bitmap);
 uint32 draw_cube();
 uint32 draw_plane();
-uint32 draw_model();
+uint32 draw_model(ModelInfo info);
 
 static Vec2 mousePos; 
 static const uint16 windowWidth = 620;   //@Note: These dont update. The mark the start size
 static const uint16 windowHeight = 480;  //@Note: These dont update. The mark the start size
 
+#include "Camera.cpp"
 #include "Game.cpp"
 
 #include <windows.h>
@@ -150,6 +151,7 @@ int main() {
   }
   
   test_renderer();
+  allocate_cameras();
   
   ShowWindow(window, SW_SHOW);
   UpdateWindow(window);

@@ -16,13 +16,13 @@ struct RenderObjects {
   ID3D11Buffer** vertexBuffers = nullptr;
   uint32* vertexBufferStrides = nullptr;
   ID3D11Buffer** indexBuffers = nullptr;
-  ID3D11Buffer** translationBuffers = nullptr;
   uint32* indexBufferSizes = nullptr;
   ID3D11VertexShader** vertexShaders = nullptr;
   ID3D11PixelShader** fragmentShaders = nullptr;
   ID3D11InputLayout** inputLayouts = nullptr;
   ID3D11ShaderResourceView** resourceViews = nullptr;
   ID3D11SamplerState** samplers = nullptr;
+  Mat4* transform = nullptr;
   uint32 count = 0;
 };
 
@@ -73,7 +73,7 @@ void test_renderer() {
 void allocate_render_objects() {
   renderObjects.vertexBuffers = (ID3D11Buffer**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11Buffer*));
   renderObjects.indexBuffers = (ID3D11Buffer**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11Buffer*));
-  renderObjects.translationBuffers = (ID3D11Buffer**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11Buffer*));
+  renderObjects.transform = (Mat4*)malloc(RENDER_OBJECT_LIMIT * sizeof(Mat4));
   renderObjects.vertexBufferStrides = (uint32*)malloc(RENDER_OBJECT_LIMIT * sizeof(uint32));
   renderObjects.indexBufferSizes = (uint32*)malloc(RENDER_OBJECT_LIMIT * sizeof(uint32));
   renderObjects.vertexShaders = (ID3D11VertexShader**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11VertexShader*));
@@ -256,15 +256,8 @@ void set_object_transform(uint32 index, Vec3 position, Vec3 rotation, Vec3 scale
     Mat4 mat = 
       mat4_scaling(scale) *
       mat4_euler_rotation(rotation) *
-      mat4_translation(position) *
-      mat4_perspective(1.0f, 3.0f/4.0f, 0.5f, 100.0f); //@ToDo: abstract to camera
-    
-    mat = mat4_transpose(mat);
-    
-    ID3D11Buffer* translationBuffer;
-    create_constant_buffer(&translationBuffer, &mat, sizeof(mat));
-    if(renderObjects.translationBuffers[index]) (renderObjects.translationBuffers[index])->Release();
-    renderObjects.translationBuffers[index] = translationBuffer;
+      mat4_translation(position);    
+    renderObjects.transform[index] = mat;
 }  
 
 void set_object_texture(uint32 index, Bitmap* bmp) {    
@@ -285,7 +278,7 @@ void render_loop() {
     ID3D11Buffer* vertexBuffer = renderObjects.vertexBuffers[i];
     uint32 vertexBufferStride = renderObjects.vertexBufferStrides[i];
     ID3D11Buffer* indexBuffer = renderObjects.indexBuffers[i];
-    ID3D11Buffer* translationBuffer = renderObjects.translationBuffers[i];
+    Mat4 transform = renderObjects.transform[i];
     uint32 indexBufferSize = renderObjects.indexBufferSizes[i];
     ID3D11ShaderResourceView* resourceView = renderObjects.resourceViews[i];
     ID3D11VertexShader* vertexShader = renderObjects.vertexShaders[i];
@@ -296,13 +289,18 @@ void render_loop() {
 
     context->IASetVertexBuffers(0, 1, &vertexBuffer, &vertexBufferStride, &offset);
     context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R16_UINT, 0);
-    context->VSSetConstantBuffers(0, 1, &translationBuffer);
 
     if(resourceView) {
       assert(sampler, "In order to display a resource view the renderer needs a sampler!");
       context->PSSetSamplers(0, 1, &sampler);
       context->PSSetShaderResources(0, 1, &resourceView);
     }
+    
+    transform = mat4_transpose(transform * get_view_projection(activeCamera));
+    ID3D11Buffer* translationBuffer;
+    create_constant_buffer(&translationBuffer, &transform, sizeof(Mat4));
+    context->VSSetConstantBuffers(0, 1, &translationBuffer);
+    translationBuffer->Release();
 
     context->VSSetShader(vertexShader, nullptr, 0);
     context->PSSetShader(fragmentShader, nullptr, 0);
@@ -373,7 +371,6 @@ uint32 draw_object(ModelInfo* info) {
   renderObjects.inputLayouts[index] = inputLayout;
 
   renderObjects.resourceViews[index] = nullptr;
-  renderObjects.translationBuffers[index] = nullptr;
   set_object_transform(index, vec3_from_scalar(0.0f), vec3_from_scalar(0.0f), vec3_from_scalar(1.0f));
 
   vBlob->Release();
@@ -437,8 +434,7 @@ uint32 draw_plane() {
   return draw_object(&info);
 }
 
-uint32 draw_model() {
-  ModelInfo info = load_obj("res/models/Monkey.obj");
+uint32 draw_model(ModelInfo info) {
   return draw_object(&info);
 }
 
