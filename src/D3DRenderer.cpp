@@ -30,16 +30,12 @@ struct RenderObjects {
 
 static RenderInfo renderInfo; // @CleanUp: Maybe have this not be a global variable
 
-#if defined(DEBUG)
 #define d3d_assert(condition) \
   if(FAILED(condition)) { \
     log_("D3D ERROR: %d\n", (uint32)condition); \
     log_("\n"); \
     exit(1); \
   }
-#else
-#define d3d_assert(condition)
-#endif
 
 static HRESULT compile_shader(LPCWSTR path, LPCSTR target, ID3DBlob** blob) {
   ID3DBlob* errorBlob;
@@ -129,7 +125,7 @@ void init_renderer(HWND window) {
     nullptr,
     &context
   );
-
+    
   assert(swapchain, "Swapchain coulnd't be initialized");
   assert(device, "Device coulnd't be initialized");
   assert(context, "Context coulnd't be initialized");

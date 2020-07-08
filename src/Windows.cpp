@@ -19,10 +19,10 @@ typedef double float64;
 typedef int32_t bool32;
 
 #if defined(DEBUG)
-#define log_(message, ...) printf(message, __VA_ARGS__)
+#define log_(message, ...) printf(message, ##__VA_ARGS__)
 #define assert(condition, message, ...) \
   if(!(condition)) { \
-    log_(message, __VA_ARGS__); \
+    log_(message, ##__VA_ARGS__); \
     log_("\n"); \
     exit(1); \
   }
@@ -94,11 +94,14 @@ HWND create_window(uint16 width, uint16 height, const char* name, bool32 fullscr
   windowClass.hInstance = GetModuleHandle(0);
   windowClass.lpszClassName = "LittleTestWindow";
   windowClass.hIcon = LoadIcon(NULL, IDI_INFORMATION);
-  assert(RegisterClass(&windowClass), "win32: Couldn't register window class!");
+  
+  HRESULT registerResult = RegisterClass(&windowClass); 
+  assert(registerResult, "win32: Couldn't register window class!");
   
   HWND hwnd = CreateWindowEx(0, windowClass.lpszClassName, name, WS_OVERLAPPEDWINDOW | WS_VISIBLE,
 			     CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, windowClass.hInstance, 0);
   assert(hwnd, "win32: Couldn't create a window!");
+
   PIXELFORMATDESCRIPTOR pfd;
   memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
   pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
@@ -110,7 +113,9 @@ HWND create_window(uint16 width, uint16 height, const char* name, bool32 fullscr
   HDC hdc = GetDC(hwnd);
   int32 pixelFormat = ChoosePixelFormat(hdc, &pfd);
   assert(pixelFormat, "win32: PixelFormat is not valid!");
-  assert(SetPixelFormat(hdc, pixelFormat, &pfd), "win32: Couldn't set the PixelFormat!");
+  HRESULT pixelFormatResult = SetPixelFormat(hdc, pixelFormat, &pfd); 
+  
+  assert(pixelFormatResult, "win32: Couldn't set the PixelFormat!");
   DescribePixelFormat(hdc, pixelFormat, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
 
   ReleaseDC(hwnd, hdc);
@@ -123,7 +128,11 @@ void close_window(HWND& hwnd, HDC& hdc, HGLRC& hrc) {
   ReleaseDC(hwnd, hdc);
 } 
 
-int main() {  
+#if defined(DEBUG)
+int main() {
+#else
+int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdLine, int nCmdShow) {
+#endif
   srand(time(0));
 
   char name[256] = "LittleTest";
@@ -138,7 +147,8 @@ int main() {
 
   HDC hdc = GetDC(window);
   HGLRC hrc = wglCreateContext(hdc);
-  assert(wglMakeCurrent(hdc, hrc), "Coulnd't make context current");
+  HRESULT result = wglMakeCurrent(hdc, hrc); 
+  assert(result, "Coulnd't make context current");
   
   fptr_wglSwapIntervalEXT* wglSwapInterval = (fptr_wglSwapIntervalEXT*)wglGetProcAddress("wglSwapIntervalEXT");
   if(wglSwapInterval) {
@@ -155,7 +165,7 @@ int main() {
   std::chrono::high_resolution_clock timer;
   float64 time = 0.0;
   float64 dt = 0.015;
-
+  
   MSG message;
   while(true) {
     auto start = timer.now();
