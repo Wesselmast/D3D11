@@ -1,3 +1,5 @@
+#include "Camera.cpp"
+
 #include <d3d11.h>
 #include <d3dcompiler.h>
 
@@ -26,10 +28,7 @@ struct RenderObjects {
   uint32 count = 0;
 };
 
-const uint32 RENDER_OBJECT_LIMIT = 300;     // @ToDo: Make a project-wide memory cap
-
 static RenderInfo renderInfo; // @CleanUp: Maybe have this not be a global variable
-static RenderObjects renderObjects;
 
 static void d3d_assert(HRESULT err) {
   if(FAILED(err)) {
@@ -67,20 +66,25 @@ void test_renderer() {
   assert(renderInfo.swapchain, "swapchain has not been initialized!");
   assert(renderInfo.context, "context has not been initialized!");
   assert(renderInfo.target, "rendertarget has not been initialized!");
-  assert(renderInfo.viewport, "viewport has not been initialized!");
 }
 
-void allocate_render_objects() {
-  renderObjects.vertexBuffers = (ID3D11Buffer**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11Buffer*));
-  renderObjects.indexBuffers = (ID3D11Buffer**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11Buffer*));
-  renderObjects.transform = (Mat4*)malloc(RENDER_OBJECT_LIMIT * sizeof(Mat4));
-  renderObjects.vertexBufferStrides = (uint32*)malloc(RENDER_OBJECT_LIMIT * sizeof(uint32));
-  renderObjects.indexBufferSizes = (uint32*)malloc(RENDER_OBJECT_LIMIT * sizeof(uint32));
-  renderObjects.vertexShaders = (ID3D11VertexShader**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11VertexShader*));
-  renderObjects.fragmentShaders = (ID3D11PixelShader**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11PixelShader*));
-  renderObjects.inputLayouts = (ID3D11InputLayout**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11InputLayout*));
-  renderObjects.resourceViews = (ID3D11ShaderResourceView**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11ShaderResourceView*));
-  renderObjects.samplers = (ID3D11SamplerState**)malloc(RENDER_OBJECT_LIMIT * sizeof(ID3D11SamplerState*));
+RenderObjects init_render_objects(GameMemory* memory, uint32 limit) {
+  RenderObjects renderObjects = {}; 
+  renderObjects.vertexBuffers = (ID3D11Buffer**)reserve(memory, limit * sizeof(ID3D11Buffer*));
+  renderObjects.indexBuffers = (ID3D11Buffer**)reserve(memory, limit * sizeof(ID3D11Buffer*));
+  renderObjects.transform = (Mat4*)reserve(memory, limit * sizeof(Mat4));
+  renderObjects.vertexBufferStrides = (uint32*)reserve(memory, limit * sizeof(uint32));
+  renderObjects.indexBufferSizes = (uint32*)reserve(memory, limit * sizeof(uint32));
+  renderObjects.vertexShaders = (ID3D11VertexShader**)reserve(memory, limit * sizeof(ID3D11VertexShader*));
+  renderObjects.fragmentShaders = (ID3D11PixelShader**)reserve(memory, limit * sizeof(ID3D11PixelShader*));
+  renderObjects.inputLayouts = (ID3D11InputLayout**)reserve(memory, limit * sizeof(ID3D11InputLayout*));
+  renderObjects.resourceViews = (ID3D11ShaderResourceView**)reserve(memory, limit * sizeof(ID3D11ShaderResourceView*));
+  renderObjects.samplers = (ID3D11SamplerState**)reserve(memory, limit * sizeof(ID3D11SamplerState*));
+  
+  //TODO: give this it's own place
+  renderInfo.viewport = (D3D11_VIEWPORT*)reserve(memory, sizeof(D3D11_VIEWPORT));
+  
+  return renderObjects;
 }
 
 void init_renderer(HWND window) {
@@ -167,8 +171,6 @@ void init_renderer(HWND window) {
   renderInfo.device = device;
   renderInfo.target = target;
   renderInfo.dsv = dsv;
-  
-  allocate_render_objects();
 }
 
 void create_vertex_buffer(ID3D11Buffer** vertexBuffer, const void* vertices, uint32 size, uint32 stride) {
@@ -252,39 +254,39 @@ void create_constant_buffer(ID3D11Buffer** constantBuffer, const void* mat, uint
   d3d_assert(device->CreateBuffer(&CBDesc, &CBData, constantBuffer));
 }
 
-void set_object_transform(uint32 index, Vec3 position, Vec3 rotation, Vec3 scale) {
+void set_object_transform(RenderObjects* renderObjects, uint32 index, Vec3 position, Vec3 rotation, Vec3 scale) {
     Mat4 mat = 
       mat4_scaling(scale) *
       mat4_euler_rotation(rotation) *
       mat4_translation(position);    
-    renderObjects.transform[index] = mat;
+    renderObjects->transform[index] = mat;
 }  
 
-void set_object_texture(uint32 index, Bitmap* bmp) {    
+void set_object_texture(RenderObjects* renderObjects, uint32 index, Bitmap* bmp) {    
     ID3D11ShaderResourceView* resourceView;
     create_texture(&resourceView, bmp);
-    if(renderObjects.resourceViews[index]) (renderObjects.resourceViews[index])->Release();
-    renderObjects.resourceViews[index] = resourceView;
+    if(renderObjects->resourceViews[index]) (renderObjects->resourceViews[index])->Release();
+    renderObjects->resourceViews[index] = resourceView;
 }
 
-void render_loop() {
+void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection) {
   ID3D11DeviceContext* context = renderInfo.context;
   ID3D11RenderTargetView* target = renderInfo.target;
   ID3D11DepthStencilView* dsv = renderInfo.dsv;
   
   context->OMSetRenderTargets(1, &target, dsv);
 
-  for(uint32 i = 0; i < renderObjects.count; i++) {
-    ID3D11Buffer* vertexBuffer = renderObjects.vertexBuffers[i];
-    uint32 vertexBufferStride = renderObjects.vertexBufferStrides[i];
-    ID3D11Buffer* indexBuffer = renderObjects.indexBuffers[i];
-    Mat4 transform = renderObjects.transform[i];
-    uint32 indexBufferSize = renderObjects.indexBufferSizes[i];
-    ID3D11ShaderResourceView* resourceView = renderObjects.resourceViews[i];
-    ID3D11VertexShader* vertexShader = renderObjects.vertexShaders[i];
-    ID3D11PixelShader* fragmentShader = renderObjects.fragmentShaders[i];
-    ID3D11SamplerState* sampler = renderObjects.samplers[i];
-    ID3D11InputLayout* inputLayout = renderObjects.inputLayouts[i];
+  for(uint32 i = 0; i < renderObjects->count; i++) {
+    ID3D11Buffer* vertexBuffer = renderObjects->vertexBuffers[i];
+    uint32 vertexBufferStride = renderObjects->vertexBufferStrides[i];
+    ID3D11Buffer* indexBuffer = renderObjects->indexBuffers[i];
+    Mat4 transform = renderObjects->transform[i];
+    uint32 indexBufferSize = renderObjects->indexBufferSizes[i];
+    ID3D11ShaderResourceView* resourceView = renderObjects->resourceViews[i];
+    ID3D11VertexShader* vertexShader = renderObjects->vertexShaders[i];
+    ID3D11PixelShader* fragmentShader = renderObjects->fragmentShaders[i];
+    ID3D11SamplerState* sampler = renderObjects->samplers[i];
+    ID3D11InputLayout* inputLayout = renderObjects->inputLayouts[i];
     uint32 offset = 0;
 
     context->IASetVertexBuffers(0, 1, &vertexBuffer, &vertexBufferStride, &offset);
@@ -296,7 +298,7 @@ void render_loop() {
       context->PSSetShaderResources(0, 1, &resourceView);
     }
     
-    transform = mat4_transpose(transform * get_view_projection(activeCamera));
+    transform = mat4_transpose(transform * viewProjection);
     ID3D11Buffer* translationBuffer;
     create_constant_buffer(&translationBuffer, &transform, sizeof(Mat4));
     context->VSSetConstantBuffers(0, 1, &translationBuffer);
@@ -311,24 +313,24 @@ void render_loop() {
   }
 }
 
-uint32 draw_object(ModelInfo* info) {
+uint32 draw_object(RenderObjects* renderObjects, ModelInfo* info) {
   ID3D11Device* device = renderInfo.device;
   float32* vertices = info->vertices;
   uint32 vSize = info->vSize;
   uint32 stride = info->stride;
   uint16* indices = info->indices;
   uint32 iSize = info->iSize;
-  uint32 index = renderObjects.count;
+  uint32 index = renderObjects->count;
 
   ID3D11Buffer* vertexBuffer;
   create_vertex_buffer(&vertexBuffer, vertices, vSize, stride);
-  renderObjects.vertexBuffers[index] = vertexBuffer;
-  renderObjects.vertexBufferStrides[index] = stride;
+  renderObjects->vertexBuffers[index] = vertexBuffer;
+  renderObjects->vertexBufferStrides[index] = stride;
 
   ID3D11Buffer* indexBuffer;
   create_index_buffer(&indexBuffer, indices, iSize, sizeof(uint16));
-  renderObjects.indexBuffers[index] = indexBuffer;
-  renderObjects.indexBufferSizes[index] = iSize / sizeof(uint16);
+  renderObjects->indexBuffers[index] = indexBuffer;
+  renderObjects->indexBufferSizes[index] = iSize / sizeof(uint16);
   
   char path[512];
   ID3DBlob* vBlob;
@@ -345,11 +347,11 @@ uint32 draw_object(ModelInfo* info) {
 
   ID3D11VertexShader* vertexShader = nullptr;
   d3d_assert(device->CreateVertexShader(vBlob->GetBufferPointer(), vBlob->GetBufferSize(), nullptr, &vertexShader));
-  renderObjects.vertexShaders[index] = vertexShader;
+  renderObjects->vertexShaders[index] = vertexShader;
 
   ID3D11PixelShader* fragmentShader = nullptr;
   d3d_assert(device->CreatePixelShader(fBlob->GetBufferPointer(), fBlob->GetBufferSize(), nullptr, &fragmentShader));
-  renderObjects.fragmentShaders[index] = fragmentShader;
+  renderObjects->fragmentShaders[index] = fragmentShader;
 
   ID3D11SamplerState* sampler;
   D3D11_SAMPLER_DESC samplerDesc = {};
@@ -358,7 +360,7 @@ uint32 draw_object(ModelInfo* info) {
   samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
   samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
   d3d_assert(device->CreateSamplerState(&samplerDesc, &sampler));
-  renderObjects.samplers[index] = sampler;
+  renderObjects->samplers[index] = sampler;
 
   ID3D11InputLayout* inputLayout = nullptr;
   const D3D11_INPUT_ELEMENT_DESC inputElementDesc[] = {
@@ -368,19 +370,19 @@ uint32 draw_object(ModelInfo* info) {
 
   uint32 inputCount = sizeof(inputElementDesc) / sizeof(D3D11_INPUT_ELEMENT_DESC);
   d3d_assert(device->CreateInputLayout(inputElementDesc, inputCount, vBlob->GetBufferPointer(), vBlob->GetBufferSize(), &inputLayout));
-  renderObjects.inputLayouts[index] = inputLayout;
+  renderObjects->inputLayouts[index] = inputLayout;
 
-  renderObjects.resourceViews[index] = nullptr;
-  set_object_transform(index, vec3_from_scalar(0.0f), vec3_from_scalar(0.0f), vec3_from_scalar(1.0f));
+  renderObjects->resourceViews[index] = nullptr;
+  set_object_transform(renderObjects, index, vec3_from_scalar(0.0f), vec3_from_scalar(0.0f), vec3_from_scalar(1.0f));
 
   vBlob->Release();
   fBlob->Release();
  
-  renderObjects.count++;
+  renderObjects->count++;
   return index;
 }
 
-uint32 draw_cube() {
+uint32 draw_cube(RenderObjects* renderObjects) {
   float32 vertices[] = {
     -1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
      1.0f, -1.0f, -1.0f, 1.0f, 0.0f,
@@ -409,10 +411,10 @@ uint32 draw_cube() {
   info.indices = &indices[0];
   info.iSize = sizeof(indices);
 
-  return draw_object(&info);
+  return draw_object(renderObjects, &info);
 }
 
-uint32 draw_plane() {
+uint32 draw_plane(RenderObjects* renderObjects) {
   float32 vertices[] = {
     -1.0f, -1.0f,  0.0f, 0.0f, 0.0f,
      1.0f, -1.0f,  0.0f, 1.0f, 0.0f,
@@ -431,24 +433,18 @@ uint32 draw_plane() {
   info.indices = &indices[0];
   info.iSize = sizeof(indices);
 
-  return draw_object(&info);
+  return draw_object(renderObjects, &info);
 }
 
-uint32 draw_model(ModelInfo info) {
-  return draw_object(&info);
+uint32 draw_model(RenderObjects* renderObjects, ModelInfo info) {
+  return draw_object(renderObjects, &info);
 }
 
 void refresh_viewport(int32 x, int32 y, uint32 w, uint32 h) {
   ID3D11DeviceContext* context = renderInfo.context;
   D3D11_VIEWPORT* viewport = renderInfo.viewport;
   
-  assert(context);
-  if(!viewport) {
-    viewport = (D3D11_VIEWPORT*)malloc(sizeof(D3D11_VIEWPORT));
-    renderInfo.viewport = viewport;
-  }
-  
-  assert(viewport);
+  if(!viewport) return;
   viewport->TopLeftX = x;
   viewport->TopLeftY = y;
   viewport->Width = w;

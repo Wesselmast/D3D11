@@ -24,26 +24,16 @@ void full_path(char* buffer, const char* fileName);
 #include "Math.cpp"
 #include "File.cpp"
 
-void set_object_transform(uint32 index, Vec3 position, Vec3 rotation, Vec3 scale);
-void set_object_texture(uint32 index, Bitmap* bitmap);
-uint32 draw_cube();
-uint32 draw_plane();
-uint32 draw_model(ModelInfo info);
-
 static Vec2 mousePos; 
 static const uint16 windowWidth = 620;   //@Note: These dont update. The mark the start size
 static const uint16 windowHeight = 480;  //@Note: These dont update. The mark the start size
 
-#include "Camera.cpp"
+#include "Memory.h"
 #include "Game.cpp"
 
 #include <windows.h>
-//#include "OpenGLRenderer.cpp"
 #include <cstdlib>
 #include <wchar.h>
-
-#include "D3DRenderer.cpp"
-
 #include <chrono>
 
 typedef BOOL fptr_wglSwapIntervalEXT(int interval);
@@ -149,9 +139,10 @@ int main() {
   if(wglSwapInterval) {
     wglSwapInterval(1);
   }
-  
-  test_renderer();
-  allocate_cameras();
+
+  GameMemory gameMemory = {};
+  gameMemory.size = megabytes(64);
+  gameMemory.memory = VirtualAlloc(0, gameMemory.size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
   
   ShowWindow(window, SW_SHOW);
   UpdateWindow(window);
@@ -159,8 +150,6 @@ int main() {
   std::chrono::high_resolution_clock timer;
   float64 time = 0.0;
   float64 dt = 0.015;
-
-  game_start();
 
   MSG message;
   while(true) {
@@ -170,10 +159,8 @@ int main() {
       TranslateMessage(&message);
       DispatchMessage(&message);
     }
-
     clear_buffer(0.5f, 0.0f, 0.5f, 1.0f);
-    render_loop();
-    game_update(dt, time);
+    game_update(&gameMemory, dt, time);
     swap_buffers(true);
 
     dt = std::chrono::duration<float64>(timer.now() - start).count();
