@@ -30,12 +30,16 @@ struct RenderObjects {
 
 static RenderInfo renderInfo; // @CleanUp: Maybe have this not be a global variable
 
-static void d3d_assert(HRESULT err) {
-  if(FAILED(err)) {
-    printf("D3D ERROR: %d\n", (uint32)err);
-    assert(false, "D3D ERROR, check log");
+#if defined(DEBUG)
+#define d3d_assert(condition) \
+  if(FAILED(condition)) { \
+    log_("D3D ERROR: %d\n", (uint32)condition); \
+    log_("\n"); \
+    exit(1); \
   }
-}
+#else
+#define d3d_assert(condition)
+#endif
 
 static HRESULT compile_shader(LPCWSTR path, LPCSTR target, ID3DBlob** blob) {
   ID3DBlob* errorBlob;
@@ -43,7 +47,7 @@ static HRESULT compile_shader(LPCWSTR path, LPCSTR target, ID3DBlob** blob) {
   HRESULT result = D3DCompileFromFile(path, 0, 0, "main", target, 0, 0, blob, &errorBlob );
   if(FAILED(result)) {
     if(errorBlob) {
-      printf("%s", (char*)errorBlob->GetBufferPointer());
+      log_("%s", (char*)errorBlob->GetBufferPointer());
       errorBlob->Release();
     }
     if(*blob) (*blob)->Release();

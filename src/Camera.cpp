@@ -15,8 +15,7 @@ Cameras init_cameras(GameMemory* memory, uint32 limit) {
 }
 
 Mat4 get_view_projection(Cameras* cameras, const uint32& camera) {
-  bool32 valid = (camera < cameras->count) & (camera >= 0); 
-  assert(valid, "Trying to get viewprojection matrix of camera that is null or not possessed!");
+  assert((camera < cameras->count) & (camera >= 0), "Trying to get viewprojection matrix of nonexistent camera!");
   return cameras->projectionMatrixes[camera] * cameras->viewMatrixes[camera];
 }
 

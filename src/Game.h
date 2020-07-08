@@ -12,8 +12,7 @@ struct GameMemory {
 };
 
 void* reserve(GameMemory* memory, uint32 amt) {
-  uint32 index = memory->offset + amt;
-  assert(index <= memory->size, "Allocating more memory than the game allows! Terminating..");
   memory->offset += amt;
-  return ((uint8*)memory->memory + index); 
+  assert(memory->offset <= memory->size, "Allocating more memory than the game allows! Terminating..");
+  return (((uint8*)(memory->memory)) + memory->offset); 
 }

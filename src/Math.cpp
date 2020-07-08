@@ -44,10 +44,10 @@ Vec3 vec3_from_scalar(float32 scalar) {
 }
 
 void mat4_print(const Mat4& mat) {
-  printf("%f, %f, %f, %f\n", mat.m0[0], mat.m0[1], mat.m0[2], mat.m0[3]);
-  printf("%f, %f, %f, %f\n", mat.m1[0], mat.m1[1], mat.m1[2], mat.m1[3]);
-  printf("%f, %f, %f, %f\n", mat.m2[0], mat.m2[1], mat.m2[2], mat.m2[3]);
-  printf("%f, %f, %f, %f\n", mat.m3[0], mat.m3[1], mat.m3[2], mat.m3[3]);
+  log_("%f, %f, %f, %f\n", mat.m0[0], mat.m0[1], mat.m0[2], mat.m0[3]);
+  log_("%f, %f, %f, %f\n", mat.m1[0], mat.m1[1], mat.m1[2], mat.m1[3]);
+  log_("%f, %f, %f, %f\n", mat.m2[0], mat.m2[1], mat.m2[2], mat.m2[3]);
+  log_("%f, %f, %f, %f\n", mat.m3[0], mat.m3[1], mat.m3[2], mat.m3[3]);
 }
 
 Mat4 mat4_identity() {

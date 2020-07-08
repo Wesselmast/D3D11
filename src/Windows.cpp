@@ -18,7 +18,19 @@ typedef double float64;
 
 typedef int32_t bool32;
 
-void assert(bool condition, const char* message = "Unspecified termination");
+#if defined(DEBUG)
+#define log_(message, ...) printf(message, __VA_ARGS__)
+#define assert(condition, message, ...) \
+  if(!(condition)) { \
+    log_(message, __VA_ARGS__); \
+    log_("\n"); \
+    exit(1); \
+  }
+#else
+#define log_(message, ...)
+#define assert(condition, message, ...)
+#endif
+
 void full_path(char* buffer, const char* fileName);
   
 #include "Math.cpp"
@@ -37,13 +49,6 @@ static const uint16 windowHeight = 480;  //@Note: These dont update. The mark th
 #include <chrono>
 
 typedef BOOL fptr_wglSwapIntervalEXT(int interval);
-
-void assert(bool condition, const char* message) {
-  if(!condition) {
-    MessageBox(0, message, "Fatal error!", MB_OK | MB_ICONERROR);
-    exit(1);
-  }
-}
 
 void full_path(char* buffer, const char* fileName) {
   char dirPath[512];
@@ -89,7 +94,7 @@ HWND create_window(uint16 width, uint16 height, const char* name, bool32 fullscr
   windowClass.hInstance = GetModuleHandle(0);
   windowClass.lpszClassName = "LittleTestWindow";
   windowClass.hIcon = LoadIcon(NULL, IDI_INFORMATION);
-  assert(RegisterClass(&windowClass));
+  assert(RegisterClass(&windowClass), "win32: Couldn't register window class!");
   
   HWND hwnd = CreateWindowEx(0, windowClass.lpszClassName, name, WS_OVERLAPPEDWINDOW | WS_VISIBLE,
 			     CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, windowClass.hInstance, 0);
