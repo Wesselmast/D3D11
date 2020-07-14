@@ -10,3 +10,13 @@ struct GameMemory {
   uint32 offset = 0;
   bool32 isInitialized = false;
 };
+
+struct GameInput {
+  bool32 up;
+  bool32 left;
+  bool32 down;
+  bool32 right;
+  bool32 quit;
+
+  Vec2 mousePosition;
+};

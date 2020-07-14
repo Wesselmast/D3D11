@@ -43,6 +43,38 @@ Vec3 vec3_from_scalar(float32 scalar) {
   return {scalar, scalar, scalar};
 }
 
+Vec3 operator-(const Vec3& a) {
+  Vec3 result = {};
+  result.x = -a.x;
+  result.y = -a.y;
+  result.z = -a.z;
+  return result;
+}
+
+Vec3 vec3_cross(const Vec3& a, const Vec3& b) {
+  Vec3 result = {};
+  result.x = a.y * b.z - a.z * b.y;
+  result.y = a.z * b.x - a.x * b.z;
+  result.z = a.x * b.y - a.y * b.x;
+  return result;
+}
+
+Vec3 vec3_forward(const Vec3& rot) {
+  Vec3 result = {};
+  result.x = cos(rot.x) * cos(rot.y);
+  result.y = sin(rot.x);
+  result.z = cos(rot.x) * sin(rot.y);
+  return result;
+}
+
+Vec3 vec3_right(const Vec3& rot) {
+  return vec3_cross(vec3_forward(rot), {0.0f, 1.0f, 0.0f});
+}
+
+void vec3_print(const Vec3& vec) {
+  log_("%f, %f, %f\n", vec.x, vec.y, vec.z);
+}
+
 void mat4_print(const Mat4& mat) {
   log_("%f, %f, %f, %f\n", mat.m0[0], mat.m0[1], mat.m0[2], mat.m0[3]);
   log_("%f, %f, %f, %f\n", mat.m1[0], mat.m1[1], mat.m1[2], mat.m1[3]);

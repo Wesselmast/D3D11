@@ -39,7 +39,6 @@ void full_path(char* buffer, const char* fileName);
 #include "Math.cpp"
 #include "File.cpp"
 
-static Vec2 mousePos; 
 static const uint16 windowWidth = 620;   //@Note: These dont update. The mark the start size
 static const uint16 windowHeight = 480;  //@Note: These dont update. The mark the start size
 
@@ -66,6 +65,8 @@ void full_path(char* buffer, const char* fileName) {
   strcat(buffer, "\0");
 }
 
+static GameInput input;
+
 LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   switch(uMsg) {
   case WM_SIZE: { 
@@ -77,10 +78,27 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return 0;
   }
   case WM_MOUSEMOVE: {
-    mousePos.x = LOWORD(lParam);
-    mousePos.y = HIWORD(lParam);
+    input.mousePosition.x = LOWORD(lParam);
+    input.mousePosition.y = HIWORD(lParam);
     return 0;
   };
+  case WM_SYSKEYDOWN:
+  case WM_SYSKEYUP:
+  case WM_KEYDOWN:
+  case WM_KEYUP: {
+    bool32 wasDown = ((lParam & (1 << 30)) != 0);
+    bool32 isDown  = ((lParam & (1 << 31)) == 0);
+    if(wasDown == isDown) return 0;
+    switch(wParam) {
+      case 'W': input.up = isDown;         return 0;
+      case 'A': input.left = isDown;       return 0;
+      case 'S': input.down = isDown;       return 0;
+      case 'D': input.right = isDown;      return 0;
+      case VK_ESCAPE: input.quit = isDown; return 0;
+    }
+    return 0;
+  }
+
   case WM_DESTROY: {
     PostQuitMessage(0);
     return 0;
@@ -181,8 +199,9 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
       TranslateMessage(&message);
       DispatchMessage(&message);
     }
+    
     clear_buffer(0.5f, 0.0f, 0.5f, 1.0f);
-    game_update(&gameMemory, dt, time);
+    if(game_update(&gameMemory, &input, dt, time)) PostQuitMessage(0);
     swap_buffers(true);
 
     dt = std::chrono::duration<float64>(timer.now() - start).count();
