@@ -82,7 +82,6 @@ RenderObjects init_render_objects(GameMemory* memory, uint32 limit) {
   renderObjects.samplers = (ID3D11SamplerState**)reserve(memory, limit * sizeof(ID3D11SamplerState*));
   
   //TODO: give this it's own place
-  renderInfo.viewport = (D3D11_VIEWPORT*)reserve(memory, sizeof(D3D11_VIEWPORT));
   
   return renderObjects;
 }
@@ -442,9 +441,13 @@ uint32 draw_model(RenderObjects* renderObjects, ModelInfo info) {
 
 void refresh_viewport(int32 x, int32 y, uint32 w, uint32 h) {
   ID3D11DeviceContext* context = renderInfo.context;
-  D3D11_VIEWPORT* viewport = renderInfo.viewport;
   
-  if(!viewport) return;
+  if(!(renderInfo.viewport)) {
+    renderInfo.viewport = (D3D11_VIEWPORT*)malloc(sizeof(D3D11_VIEWPORT));
+    return;
+  }
+
+  D3D11_VIEWPORT* viewport = renderInfo.viewport;
   viewport->TopLeftX = x;
   viewport->TopLeftY = y;
   viewport->Width = w;
