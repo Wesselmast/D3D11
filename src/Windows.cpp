@@ -18,12 +18,15 @@ typedef double float64;
 
 typedef int32_t bool32;
 
+void pop_error();
+
 #if defined(DEBUG)
 #define log_(message, ...) printf(message, ##__VA_ARGS__)
 #define assert(condition, message, ...) \
   if(!(condition)) { \
     log_(message, ##__VA_ARGS__); \
     log_("\n"); \
+    pop_error(); \
     exit(1); \
   }
 #else
@@ -49,6 +52,10 @@ static const uint16 windowHeight = 480;  //@Note: These dont update. The mark th
 #include <chrono>
 
 typedef BOOL fptr_wglSwapIntervalEXT(int interval);
+
+void pop_error() {
+  MessageBox(0, "A fatal error has occured, check the console!", "Fatal error!", MB_OK|MB_ICONERROR);
+}
 
 void full_path(char* buffer, const char* fileName) {
   char dirPath[512];

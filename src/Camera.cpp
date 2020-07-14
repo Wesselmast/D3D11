@@ -1,18 +1,13 @@
 #pragma once
 
+const uint32 CAMERA_LIMIT = 1;
+
 struct Cameras {
-  Mat4* viewMatrixes = nullptr;
-  Mat4* projectionMatrixes = nullptr;
+  Mat4 viewMatrixes[CAMERA_LIMIT];
+  Mat4 projectionMatrixes[CAMERA_LIMIT];
   int32 count = 0;
 };
 
-
-Cameras init_cameras(GameMemory* memory, uint32 limit) {
-  Cameras cameras = {};
-  cameras.viewMatrixes = (Mat4*)reserve(memory, limit * sizeof(Mat4));
-  cameras.projectionMatrixes = (Mat4*)reserve(memory, limit * sizeof(Mat4));
-  return cameras;
-}
 
 Mat4 get_view_projection(Cameras* cameras, const uint32& camera) {
   assert((camera < cameras->count) & (camera >= 0), "Trying to get viewprojection matrix of nonexistent camera!");

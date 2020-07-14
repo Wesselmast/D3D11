@@ -11,20 +11,21 @@ struct RenderInfo {
   ID3D11Device* device = nullptr;
   ID3D11RenderTargetView* target = nullptr;
   ID3D11DepthStencilView* dsv = nullptr;
-  D3D11_VIEWPORT* viewport = nullptr;
 };
 
+const uint32 RENDER_OBJECT_LIMIT = 1000;
+
 struct RenderObjects {
-  ID3D11Buffer** vertexBuffers = nullptr;
-  uint32* vertexBufferStrides = nullptr;
-  ID3D11Buffer** indexBuffers = nullptr;
-  uint32* indexBufferSizes = nullptr;
-  ID3D11VertexShader** vertexShaders = nullptr;
-  ID3D11PixelShader** fragmentShaders = nullptr;
-  ID3D11InputLayout** inputLayouts = nullptr;
-  ID3D11ShaderResourceView** resourceViews = nullptr;
-  ID3D11SamplerState** samplers = nullptr;
-  Mat4* transform = nullptr;
+  ID3D11Buffer* vertexBuffers[RENDER_OBJECT_LIMIT];
+  uint32 vertexBufferStrides[RENDER_OBJECT_LIMIT];
+  ID3D11Buffer* indexBuffers[RENDER_OBJECT_LIMIT];
+  uint32 indexBufferSizes[RENDER_OBJECT_LIMIT];
+  ID3D11VertexShader* vertexShaders[RENDER_OBJECT_LIMIT];
+  ID3D11PixelShader* fragmentShaders[RENDER_OBJECT_LIMIT];
+  ID3D11InputLayout* inputLayouts[RENDER_OBJECT_LIMIT];
+  ID3D11ShaderResourceView* resourceViews[RENDER_OBJECT_LIMIT];
+  ID3D11SamplerState* samplers[RENDER_OBJECT_LIMIT];
+  Mat4 transform[RENDER_OBJECT_LIMIT];
   uint32 count = 0;
 };
 
@@ -66,24 +67,7 @@ void test_renderer() {
   assert(renderInfo.swapchain, "swapchain has not been initialized!");
   assert(renderInfo.context, "context has not been initialized!");
   assert(renderInfo.target, "rendertarget has not been initialized!");
-}
-
-RenderObjects init_render_objects(GameMemory* memory, uint32 limit) {
-  RenderObjects renderObjects = {}; 
-  renderObjects.vertexBuffers = (ID3D11Buffer**)reserve(memory, limit * sizeof(ID3D11Buffer*));
-  renderObjects.indexBuffers = (ID3D11Buffer**)reserve(memory, limit * sizeof(ID3D11Buffer*));
-  renderObjects.transform = (Mat4*)reserve(memory, limit * sizeof(Mat4));
-  renderObjects.vertexBufferStrides = (uint32*)reserve(memory, limit * sizeof(uint32));
-  renderObjects.indexBufferSizes = (uint32*)reserve(memory, limit * sizeof(uint32));
-  renderObjects.vertexShaders = (ID3D11VertexShader**)reserve(memory, limit * sizeof(ID3D11VertexShader*));
-  renderObjects.fragmentShaders = (ID3D11PixelShader**)reserve(memory, limit * sizeof(ID3D11PixelShader*));
-  renderObjects.inputLayouts = (ID3D11InputLayout**)reserve(memory, limit * sizeof(ID3D11InputLayout*));
-  renderObjects.resourceViews = (ID3D11ShaderResourceView**)reserve(memory, limit * sizeof(ID3D11ShaderResourceView*));
-  renderObjects.samplers = (ID3D11SamplerState**)reserve(memory, limit * sizeof(ID3D11SamplerState*));
-  
-  //TODO: give this it's own place
-  
-  return renderObjects;
+  assert(renderInfo.dsv, "depthstencil has not been initialized!");
 }
 
 void init_renderer(HWND window) {
@@ -321,6 +305,8 @@ uint32 draw_object(RenderObjects* renderObjects, ModelInfo* info) {
   uint32 iSize = info->iSize;
   uint32 index = renderObjects->count;
 
+  assert(index < RENDER_OBJECT_LIMIT, "Cannot create more than %d objects!", RENDER_OBJECT_LIMIT);
+
   ID3D11Buffer* vertexBuffer;
   create_vertex_buffer(&vertexBuffer, vertices, vSize, stride);
   renderObjects->vertexBuffers[index] = vertexBuffer;
@@ -441,20 +427,14 @@ uint32 draw_model(RenderObjects* renderObjects, ModelInfo info) {
 
 void refresh_viewport(int32 x, int32 y, uint32 w, uint32 h) {
   ID3D11DeviceContext* context = renderInfo.context;
-  
-  if(!(renderInfo.viewport)) {
-    renderInfo.viewport = (D3D11_VIEWPORT*)malloc(sizeof(D3D11_VIEWPORT));
-    return;
-  }
-
-  D3D11_VIEWPORT* viewport = renderInfo.viewport;
-  viewport->TopLeftX = x;
-  viewport->TopLeftY = y;
-  viewport->Width = w;
-  viewport->Height = h;
-  viewport->MinDepth = 0;
-  viewport->MaxDepth = 1;
-  context->RSSetViewports(1, viewport);
+  D3D11_VIEWPORT viewport = {};
+  viewport.TopLeftX = x;
+  viewport.TopLeftY = y;
+  viewport.Width = w;
+  viewport.Height = h;
+  viewport.MinDepth = 0;
+  viewport.MaxDepth = 1;
+  context->RSSetViewports(1, &viewport);
 }
 
 void swap_buffers(bool32 vSync) {
