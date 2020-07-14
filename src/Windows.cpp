@@ -65,22 +65,21 @@ void full_path(char* buffer, const char* fileName) {
   strcat(buffer, "\0");
 }
 
+static GameInput input;
+
 void lock_mouse(HWND window, bool32 confine) {
   if(confine) {
     RECT rect;
     GetClientRect(window, &rect);
     MapWindowPoints(window, nullptr, (POINT*)(&rect), 2);
     ClipCursor(&rect); 
-    ShowCursor(false);
- }
+  }
   else {
-    ShowCursor(true);
     ClipCursor(nullptr);
   }
+  ShowCursor(!confine);
+  input.mouseLocked = confine; 
 } 
-
-
-static GameInput input;
 
 LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   switch(uMsg) {
@@ -106,6 +105,12 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     init_renderer(hwnd);
     return 0;
   }
+  case WM_MOUSEMOVE: {
+    input.mousePosition.x = LOWORD(lParam);    
+    input.mousePosition.y = HIWORD(lParam);
+    return 0;
+  }
+
   case WM_SYSKEYDOWN:
   case WM_SYSKEYUP:
   case WM_KEYDOWN:
@@ -139,9 +144,8 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     
     bool32 rawInputFlags = rawInput.header.dwType == RIM_TYPEMOUSE && (rawInput.data.mouse.lLastX != 0 || rawInput.data.mouse.lLastY != 0);
     if(rawInputFlags) {
-      input.mousePosition.x += rawInput.data.mouse.lLastX;
-      input.mousePosition.y += rawInput.data.mouse.lLastY;
-      log_("X: %f, Y: %f\n", input.mousePosition.x, input.mousePosition.y);
+      input.rawMousePosition.x += rawInput.data.mouse.lLastX;
+      input.rawMousePosition.y += rawInput.data.mouse.lLastY;
     }
     return 0;
   }
