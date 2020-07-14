@@ -1,5 +1,7 @@
 TODO:
 - Fix up viewports
-- Memory arena is very buggy
 - Allow for objects to be drawn at runtime
 - Input system so that I can fly around in the level
+- Add lighting
+- Networking (Nonblocking sockets)
+- Demo level should be there as soon as possible!
