@@ -65,6 +65,21 @@ void full_path(char* buffer, const char* fileName) {
   strcat(buffer, "\0");
 }
 
+void lock_mouse(HWND window, bool32 confine) {
+  if(confine) {
+    RECT rect;
+    GetClientRect(window, &rect);
+    MapWindowPoints(window, nullptr, (POINT*)(&rect), 2);
+    ClipCursor(&rect); 
+    ShowCursor(false);
+ }
+  else {
+    ShowCursor(true);
+    ClipCursor(nullptr);
+  }
+} 
+
+
 static GameInput input;
 
 LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -73,15 +88,24 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     refresh_viewport(0, 0, LOWORD(lParam), HIWORD(lParam)); 
     return 0;
   }
+  case WM_ACTIVATE: {
+    if(wParam & WA_ACTIVE) {
+      lock_mouse(hwnd, true);
+    }
+    else {
+      lock_mouse(hwnd, false);
+    }
+    return 0;
+  }
+  case WM_LBUTTONDOWN: {
+    SetForegroundWindow(hwnd);
+    lock_mouse(hwnd, true);
+    return 0;
+  }
   case WM_CREATE: {
     init_renderer(hwnd);
     return 0;
   }
-  case WM_MOUSEMOVE: {
-    input.mousePosition.x = LOWORD(lParam);
-    input.mousePosition.y = HIWORD(lParam);
-    return 0;
-  };
   case WM_SYSKEYDOWN:
   case WM_SYSKEYUP:
   case WM_KEYDOWN:
@@ -95,6 +119,29 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       case 'S': input.down = isDown;       return 0;
       case 'D': input.right = isDown;      return 0;
       case VK_ESCAPE: input.quit = isDown; return 0;
+    }
+    return 0;
+  }
+    
+  case WM_INPUT: {
+    uint32 size;
+    if(GetRawInputData((HRAWINPUT)lParam, RID_INPUT, nullptr, &size, sizeof(RAWINPUTHEADER)) == -1) {
+      log_("input missed 1\n");
+      return 0;
+    }
+    char raw[size];
+    if(GetRawInputData((HRAWINPUT)lParam, RID_INPUT, (void*)(&raw), &size, sizeof(RAWINPUTHEADER)) != size) {    
+      log_("input missed 2\n");
+      return 0;
+    }
+
+    const RAWINPUT& rawInput = (const RAWINPUT&)(raw);
+    
+    bool32 rawInputFlags = rawInput.header.dwType == RIM_TYPEMOUSE && (rawInput.data.mouse.lLastX != 0 || rawInput.data.mouse.lLastY != 0);
+    if(rawInputFlags) {
+      input.mousePosition.x += rawInput.data.mouse.lLastX;
+      input.mousePosition.y += rawInput.data.mouse.lLastY;
+      log_("X: %f, Y: %f\n", input.mousePosition.x, input.mousePosition.y);
     }
     return 0;
   }
@@ -118,7 +165,8 @@ HWND create_window(uint16 width, uint16 height, const char* name, bool32 fullscr
   windowClass.lpfnWndProc = window_proc;
   windowClass.hInstance = GetModuleHandle(0);
   windowClass.lpszClassName = "LittleTestWindow";
-  windowClass.hIcon = LoadIcon(NULL, IDI_INFORMATION);
+  windowClass.hIcon = LoadIcon(0, IDI_INFORMATION);
+  windowClass.hCursor = LoadCursor(0, IDC_ARROW);
   
   HRESULT registerResult = RegisterClass(&windowClass); 
   assert(registerResult, "win32: Couldn't register window class!");
@@ -179,6 +227,14 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
   if(wglSwapInterval) {
     wglSwapInterval(1);
   }
+
+  RAWINPUTDEVICE rawInputDevice = {};
+  rawInputDevice.usUsagePage = 0x01;
+  rawInputDevice.usUsage = 0x02;
+  rawInputDevice.dwFlags = 0;
+  rawInputDevice.hwndTarget = nullptr;
+  bool32 checkIfRegistered = RegisterRawInputDevices(&rawInputDevice, 1, sizeof(RAWINPUTDEVICE)) != FALSE;
+  assert(checkIfRegistered, "Couldn't register input device");
 
   GameMemory gameMemory = {};
   gameMemory.size = megabytes(64);
