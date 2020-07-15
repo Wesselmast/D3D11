@@ -51,6 +51,26 @@ Vec3 operator-(const Vec3& a) {
   return result;
 }
 
+float32 vec3_length_squared(const Vec3& vec) {
+  return (vec.x * vec.x) + (vec.y * vec.y) + (vec.z * vec.z);
+}
+
+float32 vec3_length(const Vec3& vec) {
+  float32 len = vec3_length_squared(vec);
+  if(len == 0.0f) return 0.0f;
+  return sqrt(len);
+}
+
+Vec3 vec3_normalize(const Vec3& vec) {
+  Vec3 result = {};
+  float32 len = vec3_length(vec);
+  if(len == 0.0f) return vec3_from_scalar(0.0f);
+  result.x = vec.x / len;
+  result.y = vec.y / len;
+  result.z = vec.z / len;
+  return result;
+}
+
 Vec3 vec3_cross(const Vec3& a, const Vec3& b) {
   Vec3 result = {};
   result.x = a.y * b.z - a.z * b.y;
