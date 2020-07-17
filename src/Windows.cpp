@@ -110,6 +110,10 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     input.mousePosition.y = HIWORD(lParam);
     return 0;
   }
+  case WM_MOUSEWHEEL: {
+    input.mouseWheel += (float)GET_WHEEL_DELTA_WPARAM(wParam)/(float)WHEEL_DELTA;
+    return 0;
+  }
 
   case WM_SYSKEYDOWN:
   case WM_SYSKEYUP:
