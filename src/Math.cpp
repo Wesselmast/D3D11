@@ -31,8 +31,14 @@ struct Vec4 {
   float32 w;
 };
 
+float32 clamp(float32 value, float32 min, float32 max) {
+  if(value > max) return max;
+  if(value < min) return min;
+  return value;
+}
+
 float32 pi() {
-  return acos(-1.0f);
+  return 3.14159265359f;
 }
 
 float32 degrees_to_radians() {
@@ -61,6 +67,30 @@ float32 vec3_length(const Vec3& vec) {
   return sqrt(len);
 }
 
+Vec3 operator*(const Vec3& vec, float32 scalar) {
+  Vec3 result = {};
+  result.x = vec.x * scalar;
+  result.y = vec.y * scalar;
+  result.z = vec.z * scalar;
+  return result;
+}
+
+Vec3 operator*(float32 scalar, const Vec3& vec) {
+  Vec3 result = {};
+  result.x = vec.x * scalar;
+  result.y = vec.y * scalar;
+  result.z = vec.z * scalar;
+  return result;
+}
+
+Vec3 operator+(const Vec3& a, const Vec3& b) {
+  Vec3 result = {};
+  result.x = a.x + b.x;
+  result.y = a.y + b.y;
+  result.z = a.z + b.z;
+  return result;
+}
+
 Vec3 vec3_normalize(const Vec3& vec) {
   Vec3 result = {};
   float32 len = vec3_length(vec);
@@ -81,14 +111,14 @@ Vec3 vec3_cross(const Vec3& a, const Vec3& b) {
 
 Vec3 vec3_forward(const Vec3& rot) {
   Vec3 result = {};
-  result.x = cos(rot.x) * cos(rot.y);
-  result.y = sin(rot.x);
-  result.z = cos(rot.x) * sin(rot.y);
+  result.x =  sin(rot.y);//cos(rot.x) * cos(rot.y);
+  result.y = -tan(rot.x);
+  result.z =  cos(rot.y);// * sin(rot.y);
   return result;
 }
 
 Vec3 vec3_right(const Vec3& rot) {
-  return vec3_cross(vec3_forward(rot), {0.0f, 1.0f, 0.0f});
+  return vec3_cross(vec3_forward(rot), {0.0f, -1.0f, 0.0f});
 }
 
 void vec3_print(const Vec3& vec) {

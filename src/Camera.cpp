@@ -19,9 +19,9 @@ Mat4 calculate_perspective() {
 }
 
 void set_camera_transform(Cameras* cameras, const uint32& camera, Vec3 position, Vec3 rotation) {
-  Mat4 mat = 
-    mat4_translation(position) *
-    mat4_euler_rotation(rotation);
+  Mat4 mat =
+    mat4_translation(-position)    *     
+    mat4_euler_rotation(rotation) ;
   cameras->viewMatrixes[camera] = mat;
   cameras->projectionMatrixes[camera] = calculate_perspective();
 }
