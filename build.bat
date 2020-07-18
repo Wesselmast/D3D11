@@ -24,9 +24,6 @@ IF NOT [%caching%] == [] (
 IF [%1] == [] set config=debug
 IF NOT [%~2] == [] for /f "tokens=1,* delims= " %%a in ("%*") do set compiler=%%b
 
-IF NOT EXIST .\bin\%config%\ mkdir .\bin\%config%\
-robocopy .\res .\bin\%config%\res /E /NFL /NDL /NJH /NJS
-
 echo.
 echo Compiler: %compiler%
 
@@ -40,12 +37,16 @@ rmdir .\bin\%config%\
 GOTO :eof
 
 :Release
+IF NOT EXIST .\bin\%config%\ mkdir .\bin\%config%\
+robocopy .\res .\bin\%config%\res /E /NFL /NDL /NJH /NJS
 call duration -c %caching% %compiler% src\Windows.cpp %includepaths% %rflags% -o bin\%config%\Windows.o 
 echo. && echo Linking %config%...
 call duration -l %compiler% -o bin\%config%\Test.exe bin\%config%\Windows.o %linkerpaths% %libraries% %rLflags%
 GOTO :Success
 
 :Debug
+IF NOT EXIST .\bin\%config%\ mkdir .\bin\%config%\
+robocopy .\res .\bin\%config%\res /E /NFL /NDL /NJH /NJS
 call duration -c %caching% %compiler% src\Windows.cpp %includepaths% %dflags% -o bin\%config%\Windows.o 
 echo. && echo Linking %config%...
 call duration -l %compiler% -o bin\%config%\Test.exe bin\%config%\Windows.o %linkerpaths% %libraries% %dLflags%
