@@ -15,6 +15,15 @@ struct RenderInfo {
 
 const uint32 RENDER_OBJECT_LIMIT = 1000;
 
+struct TransformBuffer {
+  Mat4 model;
+  Mat4 MVP;
+};
+
+struct LightBuffer {
+  alignas(16) Vec3 position;
+};
+
 struct RenderObjects {
   ID3D11Buffer* vertexBuffers[RENDER_OBJECT_LIMIT];
   uint32 vertexBufferStrides[RENDER_OBJECT_LIMIT];
@@ -25,7 +34,7 @@ struct RenderObjects {
   ID3D11InputLayout* inputLayouts[RENDER_OBJECT_LIMIT];
   ID3D11ShaderResourceView* resourceViews[RENDER_OBJECT_LIMIT];
   ID3D11SamplerState* samplers[RENDER_OBJECT_LIMIT];
-  Mat4 transform[RENDER_OBJECT_LIMIT];
+  TransformBuffer transform[RENDER_OBJECT_LIMIT];
   uint32 count = 0;
 };
 
@@ -239,10 +248,11 @@ void create_constant_buffer(ID3D11Buffer** constantBuffer, const void* mat, uint
 
 void set_object_transform(RenderObjects* renderObjects, uint32 index, Vec3 position, Vec3 rotation, Vec3 scale) {
     Mat4 mat = 
+      mat4_transpose(
       mat4_scaling(scale) *
       mat4_euler_rotation(rotation) *
-      mat4_translation(position);    
-    renderObjects->transform[index] = mat;
+      mat4_translation(position));    
+    renderObjects->transform[index].model = mat;
 }  
 
 void set_object_texture(RenderObjects* renderObjects, uint32 index, Bitmap* bmp) {    
@@ -252,18 +262,24 @@ void set_object_texture(RenderObjects* renderObjects, uint32 index, Bitmap* bmp)
     renderObjects->resourceViews[index] = resourceView;
 }
 
-void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection) {
+void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const Vec3& DEBUGVec) {
   ID3D11DeviceContext* context = renderInfo.context;
   ID3D11RenderTargetView* target = renderInfo.target;
   ID3D11DepthStencilView* dsv = renderInfo.dsv;
   
   context->OMSetRenderTargets(1, &target, dsv);
-
+  
+  LightBuffer light;
+  light.position = DEBUGVec;
+  ID3D11Buffer* lightBuffer;
+  create_constant_buffer(&lightBuffer, &light, sizeof(LightBuffer));
+  context->PSSetConstantBuffers(0, 1, &lightBuffer);
+  
   for(uint32 i = 0; i < renderObjects->count; i++) {
     ID3D11Buffer* vertexBuffer = renderObjects->vertexBuffers[i];
     uint32 vertexBufferStride = renderObjects->vertexBufferStrides[i];
     ID3D11Buffer* indexBuffer = renderObjects->indexBuffers[i];
-    Mat4 transform = renderObjects->transform[i];
+    TransformBuffer transform = renderObjects->transform[i];
     uint32 indexBufferSize = renderObjects->indexBufferSizes[i];
     ID3D11ShaderResourceView* resourceView = renderObjects->resourceViews[i];
     ID3D11VertexShader* vertexShader = renderObjects->vertexShaders[i];
@@ -281,12 +297,12 @@ void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection) {
       context->PSSetShaderResources(0, 1, &resourceView);
     }
     
-    transform = mat4_transpose(transform * viewProjection);
+    transform.MVP = mat4_transpose(mat4_transpose(transform.model) * viewProjection);
     ID3D11Buffer* translationBuffer;
-    create_constant_buffer(&translationBuffer, &transform, sizeof(Mat4));
+    create_constant_buffer(&translationBuffer, &transform, sizeof(TransformBuffer));
     context->VSSetConstantBuffers(0, 1, &translationBuffer);
     translationBuffer->Release();
-
+  
     context->VSSetShader(vertexShader, nullptr, 0);
     context->PSSetShader(fragmentShader, nullptr, 0);
     context->IASetInputLayout(inputLayout);
@@ -294,6 +310,8 @@ void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection) {
     
     context->DrawIndexed(indexBufferSize, 0, 0);  
   }
+
+  lightBuffer->Release();
 }
 
 uint32 draw_object(RenderObjects* renderObjects, ModelInfo* info) {
@@ -316,7 +334,7 @@ uint32 draw_object(RenderObjects* renderObjects, ModelInfo* info) {
   create_index_buffer(&indexBuffer, indices, iSize, sizeof(uint16));
   renderObjects->indexBuffers[index] = indexBuffer;
   renderObjects->indexBufferSizes[index] = iSize / sizeof(uint16);
-  
+
   char path[512];
   ID3DBlob* vBlob;
   full_path(path, "res\\shaders\\DefaultVertex.hlsl");
@@ -350,7 +368,7 @@ uint32 draw_object(RenderObjects* renderObjects, ModelInfo* info) {
   ID3D11InputLayout* inputLayout = nullptr;
   const D3D11_INPUT_ELEMENT_DESC inputElementDesc[] = {
     { "Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0 },
-    { "TexCoord", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+    { "Normal",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
   };
 
   uint32 inputCount = sizeof(inputElementDesc) / sizeof(D3D11_INPUT_ELEMENT_DESC);
@@ -368,30 +386,77 @@ uint32 draw_object(RenderObjects* renderObjects, ModelInfo* info) {
 }
 
 uint32 draw_cube(RenderObjects* renderObjects) {
-  float32 vertices[] = {
-    -1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
-     1.0f, -1.0f, -1.0f, 1.0f, 0.0f,
-    -1.0f,  1.0f, -1.0f, 0.0f, 1.0f,
-     1.0f,  1.0f, -1.0f, 1.0f, 1.0f,
+  // float32 vertices[] = {
+  //   -1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
+  //    1.0f, -1.0f, -1.0f, 1.0f, 0.0f,
+  //   -1.0f,  1.0f, -1.0f, 0.0f, 1.0f,
+  //    1.0f,  1.0f, -1.0f, 1.0f, 1.0f,
 
-    -1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 
-     1.0f, -1.0f,  1.0f, 1.0f, 0.0f,
-    -1.0f,  1.0f,  1.0f, 0.0f, 1.0f,
-     1.0f,  1.0f,  1.0f, 1.0f, 1.0f
+  //   -1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 
+  //    1.0f, -1.0f,  1.0f, 1.0f, 0.0f,
+  //   -1.0f,  1.0f,  1.0f, 0.0f, 1.0f,
+  //    1.0f,  1.0f,  1.0f, 1.0f, 1.0f
+  // };  
+
+  // uint16 indices[] = {
+  //    0, 2, 1,  3, 1, 2,
+  //    1, 3, 5,  3, 7, 5,
+  //    2, 6, 3,  3, 6, 7,
+  //    4, 5, 7,  4, 7, 6,
+  //    0, 4, 2,  2, 4, 6,
+  //    0, 1, 4,  1, 5, 4
+  // };
+
+  float32 vertices[] = {
+    //near
+    -1.0f, -1.0f, -1.0f,   0.0f,  0.0f, -1.0f,
+     1.0f, -1.0f, -1.0f,   0.0f,  0.0f, -1.0f,
+    -1.0f,  1.0f, -1.0f,   0.0f,  0.0f, -1.0f,
+     1.0f,  1.0f, -1.0f,   0.0f,  0.0f, -1.0f,
+     
+    //far
+    -1.0f, -1.0f,  1.0f,   0.0f,  0.0f,  1.0f,
+     1.0f, -1.0f,  1.0f,   0.0f,  0.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,   0.0f,  0.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,   0.0f,  0.0f,  1.0f,
+ 
+    //left
+    -1.0f, -1.0f, -1.0f,  -1.0f,  0.0f,  0.0f,
+    -1.0f,  1.0f, -1.0f,  -1.0f,  0.0f,  0.0f,
+    -1.0f, -1.0f,  1.0f,  -1.0f,  0.0f,  0.0f,
+    -1.0f,  1.0f,  1.0f,  -1.0f,  0.0f,  0.0f,
+
+    //right
+     1.0f, -1.0f, -1.0f,   1.0f,  0.0f,  0.0f,
+     1.0f,  1.0f, -1.0f,   1.0f,  0.0f,  0.0f,
+     1.0f, -1.0f,  1.0f,   1.0f,  0.0f,  0.0f,
+     1.0f,  1.0f,  1.0f,   1.0f,  0.0f,  0.0f,
+
+    //bottom
+    -1.0f, -1.0f, -1.0f,   0.0f, -1.0f,  0.0f,
+     1.0f, -1.0f, -1.0f,   0.0f, -1.0f,  0.0f,
+    -1.0f, -1.0f,  1.0f,   0.0f, -1.0f,  0.0f,
+     1.0f, -1.0f,  1.0f,   0.0f, -1.0f,  0.0f,
+
+    //top
+    -1.0f,  1.0f, -1.0f,   0.0f,  1.0f,  0.0f,
+     1.0f,  1.0f, -1.0f,   0.0f,  1.0f,  0.0f,
+    -1.0f,  1.0f,  1.0f,   0.0f,  1.0f,  0.0f,
+     1.0f,  1.0f,  1.0f,   0.0f,  1.0f,  0.0f,
   };  
 
   uint16 indices[] = {
-     0, 2, 1,  2, 3, 1,
-     1, 3, 5,  3, 7, 5,
-     2, 6, 3,  3, 6, 7,
-     4, 5, 7,  4, 7, 6,
-     0, 4, 2,  2, 4, 6,
-     0, 1, 4,  1, 5, 4
+     0,  2,  1,  2,  3,  1,
+     4,  5,  7,  4,  7,  6,
+     8,  10, 9,  10, 11, 9,
+     12, 13, 15, 12, 15, 14,
+     16, 17, 18, 18, 17, 19,
+     20, 23, 21, 20, 22, 23
   };
 
   ModelInfo info = {};
   info.vertices = &vertices[0];
-  info.stride = sizeof(float32) * 5;
+  info.stride = sizeof(float32) * 6;
   info.vSize = sizeof(vertices);
   info.indices = &indices[0];
   info.iSize = sizeof(indices);
@@ -401,10 +466,10 @@ uint32 draw_cube(RenderObjects* renderObjects) {
 
 uint32 draw_plane(RenderObjects* renderObjects) {
   float32 vertices[] = {
-    -1.0f, -1.0f,  0.0f, 0.0f, 0.0f,
-     1.0f, -1.0f,  0.0f, 1.0f, 0.0f,
-    -1.0f,  1.0f,  0.0f, 0.0f, 1.0f,
-     1.0f,  1.0f,  0.0f, 1.0f, 1.0f,
+    -1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
+     1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
+    -1.0f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
+     1.0f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
   };  
 
   uint16 indices[] = {
@@ -413,7 +478,7 @@ uint32 draw_plane(RenderObjects* renderObjects) {
 
   ModelInfo info = {};
   info.vertices = &vertices[0];
-  info.stride = sizeof(float32) * 5;
+  info.stride = sizeof(float32) * 6;
   info.vSize = sizeof(vertices);
   info.indices = &indices[0];
   info.iSize = sizeof(indices);
