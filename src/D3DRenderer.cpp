@@ -420,27 +420,6 @@ uint32 create_object(RenderObjects* renderObjects, ModelInfo* info) {
 }
 
 uint32 create_cube(RenderObjects* renderObjects) {
-  // float32 vertices[] = {
-  //   -1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
-  //    1.0f, -1.0f, -1.0f, 1.0f, 0.0f,
-  //   -1.0f,  1.0f, -1.0f, 0.0f, 1.0f,
-  //    1.0f,  1.0f, -1.0f, 1.0f, 1.0f,
-
-  //   -1.0f, -1.0f,  1.0f, 0.0f, 0.0f, 
-  //    1.0f, -1.0f,  1.0f, 1.0f, 0.0f,
-  //   -1.0f,  1.0f,  1.0f, 0.0f, 1.0f,
-  //    1.0f,  1.0f,  1.0f, 1.0f, 1.0f
-  // };  
-
-  // uint16 indices[] = {
-  //    0, 2, 1,  3, 1, 2,
-  //    1, 3, 5,  3, 7, 5,
-  //    2, 6, 3,  3, 6, 7,
-  //    4, 5, 7,  4, 7, 6,
-  //    0, 4, 2,  2, 4, 6,
-  //    0, 1, 4,  1, 5, 4
-  // };
-
   float32 vertices[] = {
     //near
     -1.0f, -1.0f, -1.0f,   0.0f,  0.0f, -1.0f,

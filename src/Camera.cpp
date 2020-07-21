@@ -14,7 +14,7 @@ Mat4 get_view_projection(Cameras* cameras, const uint32& camera) {
 }
 
 Mat4 calculate_perspective() {
-  return mat4_perspective_fov(68.0f, ((float32)windowHeight/(float32)windowWidth), 0.1f, 1000.0f);  
+  return mat4_perspective_fov(68.0f, ASPECT_RATIO, 0.1f, 1000.0f);  
 }
 
 void set_camera_transform(Cameras* cameras, const uint32& camera, Vec3 position, Vec3 rotation) {

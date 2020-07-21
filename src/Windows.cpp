@@ -39,8 +39,9 @@ void full_path(char* buffer, const char* fileName);
 #include "Math.cpp"
 #include "File.cpp"
 
-static const uint16 windowWidth = 620;   //@Note: These dont update. The mark the start size
-static const uint16 windowHeight = 480;  //@Note: These dont update. The mark the start size
+static uint16 windowWidth  = 960;   //@Note: These dont update. The mark the start size
+static uint16 windowHeight = 540;  //@Note: These dont update. The mark the start size
+#define ASPECT_RATIO windowWidth / windowHeight
 
 #include "Memory.h"
 #include "Game.cpp"
@@ -84,7 +85,8 @@ void lock_mouse(HWND window, bool32 confine) {
 LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   switch(uMsg) {
   case WM_SIZE: { 
-    refresh_viewport(0, 0, LOWORD(lParam), HIWORD(lParam)); 
+    windowWidth  = LOWORD(lParam);
+    windowHeight = HIWORD(lParam);
     return 0;
   }
   case WM_ACTIVATE: {
