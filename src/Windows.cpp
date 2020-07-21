@@ -34,6 +34,7 @@ void pop_error();
 #define assert(condition, message, ...)
 #endif
 
+void lock_mouse(bool32 confine);
 void full_path(char* buffer, const char* fileName);
   
 #include "Math.cpp"
@@ -41,7 +42,7 @@ void full_path(char* buffer, const char* fileName);
 
 static uint16 windowWidth  = 960;   //@Note: These dont update. The mark the start size
 static uint16 windowHeight = 540;  //@Note: These dont update. The mark the start size
-#define ASPECT_RATIO windowWidth / windowHeight
+#define ASPECT_RATIO (float32)windowWidth / (float32)windowHeight
 
 #include "Memory.h"
 #include "Game.cpp"
@@ -67,12 +68,13 @@ void full_path(char* buffer, const char* fileName) {
 }
 
 static GameInput input;
+static HWND activeWindow;
 
-void lock_mouse(HWND window, bool32 confine) {
+void lock_mouse(bool32 confine) {
   if(confine) {
     RECT rect;
-    GetClientRect(window, &rect);
-    MapWindowPoints(window, nullptr, (POINT*)(&rect), 2);
+    GetClientRect(activeWindow, &rect);
+    MapWindowPoints(activeWindow, nullptr, (POINT*)(&rect), 2);
     ClipCursor(&rect); 
   }
   else {
@@ -90,17 +92,14 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return 0;
   }
   case WM_ACTIVATE: {
-    if(wParam & WA_ACTIVE) {
-      lock_mouse(hwnd, true);
-    }
-    else {
-      lock_mouse(hwnd, false);
-    }
+    activeWindow = hwnd;
+    lock_mouse(wParam & WA_ACTIVE);
     return 0;
   }
   case WM_LBUTTONDOWN: {
     SetForegroundWindow(hwnd);
-    lock_mouse(hwnd, true);
+    activeWindow = hwnd;
+    lock_mouse(true);
     return 0;
   }
   case WM_CREATE: {
@@ -130,6 +129,7 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       case 'S': input.down = isDown;       return 0;
       case 'D': input.right = isDown;      return 0;
       case VK_ESCAPE: input.quit = isDown; return 0;
+      case VK_MENU:   input.alt  = isDown; return 0;
     }
     return 0;
   }

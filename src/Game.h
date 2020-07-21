@@ -17,6 +17,7 @@ struct GameInput {
   bool32 down;
   bool32 right;
   bool32 quit;
+  bool32 alt;
 
   float32 mouseWheel;
   Vec2 mousePosition;
