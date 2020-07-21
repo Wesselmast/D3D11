@@ -1,8 +1,10 @@
 TODO:
-- Fix up viewports
-- Fullscreen
+- Textures + lighting
+- Shadows
+- Better model loading (maybe I should resolve to a library for this.. assimp pretty gud)
+- Fullscreen support
 - Allow for objects to be drawn at runtime
-- Input system so that I can fly around in the level
-- Add lighting
 - Networking (Nonblocking sockets)
 - Demo level should be there as soon as possible!
+- GUI
+- Fix up viewports : ~
