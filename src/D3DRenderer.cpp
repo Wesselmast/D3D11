@@ -272,6 +272,23 @@ void set_object_texture(RenderObjects* renderObjects, uint32 index, Bitmap* bmp)
     renderObjects->resourceViews[index] = resourceView;
 }
 
+void set_object_material(RenderObjects* renderObjects, uint32 index, Material* material) {
+  ID3D11Buffer* materialBuffer;
+  create_constant_buffer(&materialBuffer, material, sizeof(Material));
+  if(renderObjects->materialBuffers[index]) (renderObjects->materialBuffers[index])->Release();
+  renderObjects->materialBuffers[index] = materialBuffer;
+}
+
+void update_view_projection(const Mat4& viewProjection) {
+  ID3D11DeviceContext* context = renderInfo.context;
+
+  Mat4 tVP = mat4_transpose(viewProjection);
+  ID3D11Buffer* viewProjectionBuffer;
+  create_constant_buffer(&viewProjectionBuffer, &tVP, sizeof(Mat4));
+  context->VSSetConstantBuffers(0, 1, &viewProjectionBuffer);
+  viewProjectionBuffer->Release();
+}
+
 void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const Vec3& DEBUGVec) {
   ID3D11DeviceContext* context = renderInfo.context;
   ID3D11RenderTargetView* target = renderInfo.target;
@@ -286,11 +303,7 @@ void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const
   context->PSSetConstantBuffers(0, 1, &lightBuffer);
   lightBuffer->Release();
   
-  Mat4 tVP = mat4_transpose(viewProjection);
-  ID3D11Buffer* viewProjectionBuffer;
-  create_constant_buffer(&viewProjectionBuffer, &tVP, sizeof(Mat4));
-  context->VSSetConstantBuffers(0, 1, &viewProjectionBuffer);
-  viewProjectionBuffer->Release();
+  update_view_projection(viewProjection);
   
   for(uint32 i = 0; i < renderObjects->count; i++) {
     ID3D11Buffer* vertexBuffer = renderObjects->vertexBuffers[i];
@@ -391,6 +404,9 @@ uint32 draw_object(RenderObjects* renderObjects, ModelInfo* info) {
   renderObjects->resourceViews[index] = nullptr;
   set_object_transform(renderObjects, index, vec3_from_scalar(0.0f), vec3_from_scalar(0.0f), vec3_from_scalar(1.0f));
 
+  Material mat = {};
+  set_object_material(renderObjects, index, &mat); 
+
   vBlob->Release();
   fBlob->Release();
  
@@ -477,7 +493,7 @@ uint32 draw_cube(RenderObjects* renderObjects) {
   return draw_object(renderObjects, &info);
 }
 
-uint32 draw_plane(RenderObjects* renderObjects, const Vec3& DEBUGcolor) {
+uint32 draw_plane(RenderObjects* renderObjects) {
   float32 vertices[] = {
     -1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
      1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
@@ -496,14 +512,7 @@ uint32 draw_plane(RenderObjects* renderObjects, const Vec3& DEBUGcolor) {
   info.indices = &indices[0];
   info.iSize = sizeof(indices);
 
-  uint32 index = draw_object(renderObjects, &info);
-
-  Material material = {};
-  material.materialColor = DEBUGcolor;
-  ID3D11Buffer* mcBuffer;
-  create_constant_buffer(&mcBuffer, &material, sizeof(Material));
-  renderObjects->materialBuffers[index] = mcBuffer;
-  return index;
+  return draw_object(renderObjects, &info);
 }
 
 uint32 draw_model(RenderObjects* renderObjects, ModelInfo info) {
