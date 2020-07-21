@@ -1,6 +1,9 @@
-cbuffer CBuf {
+cbuffer WorldSpace {
+  matrix viewProj;
+};
+
+cbuffer ObjectSpace {
   matrix model;
-  matrix MVP;
 };
 
 struct VSOut {
@@ -21,6 +24,8 @@ VSOut main(float3 pos : Position, float3 normal : Normal) {//float2 texcoord : T
   VSOut vsout;
   vsout.world = (float3)mul(float4(pos, 1.0f), model);
   vsout.normal = mul(normal, (float3x3)model);
+  
+  matrix MVP = mul(model, viewProj);
   vsout.pos = mul(float4(pos, 1.0f), MVP); 
   return vsout;
 }

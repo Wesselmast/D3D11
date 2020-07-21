@@ -15,13 +15,18 @@ struct RenderInfo {
 
 const uint32 RENDER_OBJECT_LIMIT = 1000;
 
-struct TransformBuffer {
-  Mat4 model;
-  Mat4 MVP;
+struct LightBuffer {
+  alignas(16) Vec3 position = { 0.0f, 0.0f, 0.0f };
+  alignas(16) Vec3 ambientColor = { 0.15f, 0.15f, 0.15f };
+  alignas(16) Vec3 diffuseColor = { 0.1f, 0.1f, 0.1f };
+  float32 diffuseIntensity = 1.0f;
+  float32 constantAttenuation = 1.0f;
+  float32 linearAttenuation = 0.045f;
+  float32 quadradicAttenuation = 0.0075f;
 };
 
-struct LightBuffer {
-  alignas(16) Vec3 position;
+struct Material {
+  alignas(16) Vec3 materialColor = { 0.7f, 0.7f, 0.9f };;
 };
 
 struct RenderObjects {
@@ -34,10 +39,11 @@ struct RenderObjects {
   ID3D11InputLayout* inputLayouts[RENDER_OBJECT_LIMIT];
   ID3D11ShaderResourceView* resourceViews[RENDER_OBJECT_LIMIT];
   ID3D11SamplerState* samplers[RENDER_OBJECT_LIMIT];
-  TransformBuffer transform[RENDER_OBJECT_LIMIT];
+  ID3D11Buffer* transformBuffers[RENDER_OBJECT_LIMIT];
+  ID3D11Buffer* materialBuffers[RENDER_OBJECT_LIMIT];
   uint32 count = 0;
 };
-
+ 
 static RenderInfo renderInfo; // @CleanUp: Maybe have this not be a global variable
 
 #define d3d_assert(condition) \
@@ -252,7 +258,11 @@ void set_object_transform(RenderObjects* renderObjects, uint32 index, Vec3 posit
       mat4_scaling(scale) *
       mat4_euler_rotation(rotation) *
       mat4_translation(position));    
-    renderObjects->transform[index].model = mat;
+
+    ID3D11Buffer* transformBuffer;
+    create_constant_buffer(&transformBuffer, &mat, sizeof(Mat4));
+    if(renderObjects->transformBuffers[index]) (renderObjects->transformBuffers[index])->Release();
+    renderObjects->transformBuffers[index] = transformBuffer;
 }  
 
 void set_object_texture(RenderObjects* renderObjects, uint32 index, Bitmap* bmp) {    
@@ -269,23 +279,31 @@ void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const
   
   context->OMSetRenderTargets(1, &target, dsv);
   
-  LightBuffer light;
+  LightBuffer light = {};
   light.position = DEBUGVec;
   ID3D11Buffer* lightBuffer;
   create_constant_buffer(&lightBuffer, &light, sizeof(LightBuffer));
   context->PSSetConstantBuffers(0, 1, &lightBuffer);
+  lightBuffer->Release();
+  
+  Mat4 tVP = mat4_transpose(viewProjection);
+  ID3D11Buffer* viewProjectionBuffer;
+  create_constant_buffer(&viewProjectionBuffer, &tVP, sizeof(Mat4));
+  context->VSSetConstantBuffers(0, 1, &viewProjectionBuffer);
+  viewProjectionBuffer->Release();
   
   for(uint32 i = 0; i < renderObjects->count; i++) {
     ID3D11Buffer* vertexBuffer = renderObjects->vertexBuffers[i];
     uint32 vertexBufferStride = renderObjects->vertexBufferStrides[i];
     ID3D11Buffer* indexBuffer = renderObjects->indexBuffers[i];
-    TransformBuffer transform = renderObjects->transform[i];
+    ID3D11Buffer* transformBuffer = renderObjects->transformBuffers[i];
     uint32 indexBufferSize = renderObjects->indexBufferSizes[i];
     ID3D11ShaderResourceView* resourceView = renderObjects->resourceViews[i];
     ID3D11VertexShader* vertexShader = renderObjects->vertexShaders[i];
     ID3D11PixelShader* fragmentShader = renderObjects->fragmentShaders[i];
     ID3D11SamplerState* sampler = renderObjects->samplers[i];
     ID3D11InputLayout* inputLayout = renderObjects->inputLayouts[i];
+    ID3D11Buffer* materialBuffer = renderObjects->materialBuffers[i];
     uint32 offset = 0;
 
     context->IASetVertexBuffers(0, 1, &vertexBuffer, &vertexBufferStride, &offset);
@@ -296,12 +314,9 @@ void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const
       context->PSSetSamplers(0, 1, &sampler);
       context->PSSetShaderResources(0, 1, &resourceView);
     }
-    
-    transform.MVP = mat4_transpose(mat4_transpose(transform.model) * viewProjection);
-    ID3D11Buffer* translationBuffer;
-    create_constant_buffer(&translationBuffer, &transform, sizeof(TransformBuffer));
-    context->VSSetConstantBuffers(0, 1, &translationBuffer);
-    translationBuffer->Release();
+
+    context->PSSetConstantBuffers(1, 1, &materialBuffer);
+    context->VSSetConstantBuffers(1, 1, &transformBuffer);
   
     context->VSSetShader(vertexShader, nullptr, 0);
     context->PSSetShader(fragmentShader, nullptr, 0);
@@ -310,8 +325,6 @@ void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const
     
     context->DrawIndexed(indexBufferSize, 0, 0);  
   }
-
-  lightBuffer->Release();
 }
 
 uint32 draw_object(RenderObjects* renderObjects, ModelInfo* info) {
@@ -464,7 +477,7 @@ uint32 draw_cube(RenderObjects* renderObjects) {
   return draw_object(renderObjects, &info);
 }
 
-uint32 draw_plane(RenderObjects* renderObjects) {
+uint32 draw_plane(RenderObjects* renderObjects, const Vec3& DEBUGcolor) {
   float32 vertices[] = {
     -1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
      1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
@@ -483,7 +496,14 @@ uint32 draw_plane(RenderObjects* renderObjects) {
   info.indices = &indices[0];
   info.iSize = sizeof(indices);
 
-  return draw_object(renderObjects, &info);
+  uint32 index = draw_object(renderObjects, &info);
+
+  Material material = {};
+  material.materialColor = DEBUGcolor;
+  ID3D11Buffer* mcBuffer;
+  create_constant_buffer(&mcBuffer, &material, sizeof(Material));
+  renderObjects->materialBuffers[index] = mcBuffer;
+  return index;
 }
 
 uint32 draw_model(RenderObjects* renderObjects, ModelInfo info) {
