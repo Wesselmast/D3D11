@@ -289,22 +289,27 @@ void update_view_projection(const Mat4& viewProjection) {
   viewProjectionBuffer->Release();
 }
 
-void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const Vec3& DEBUGVec) {
+void update_render_targets() {
   ID3D11DeviceContext* context = renderInfo.context;
   ID3D11RenderTargetView* target = renderInfo.target;
   ID3D11DepthStencilView* dsv = renderInfo.dsv;
   
   context->OMSetRenderTargets(1, &target, dsv);
-  
+}
+
+void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const Vec3& DEBUGVec) {
+  ID3D11DeviceContext* context = renderInfo.context;
+ 
+  update_render_targets();
+  update_view_projection(viewProjection);
+ 
   LightBuffer light = {};
   light.position = DEBUGVec;
   ID3D11Buffer* lightBuffer;
   create_constant_buffer(&lightBuffer, &light, sizeof(LightBuffer));
   context->PSSetConstantBuffers(0, 1, &lightBuffer);
   lightBuffer->Release();
-  
-  update_view_projection(viewProjection);
-  
+ 
   for(uint32 i = 0; i < renderObjects->count; i++) {
     ID3D11Buffer* vertexBuffer = renderObjects->vertexBuffers[i];
     uint32 vertexBufferStride = renderObjects->vertexBufferStrides[i];
@@ -340,7 +345,7 @@ void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const
   }
 }
 
-uint32 draw_object(RenderObjects* renderObjects, ModelInfo* info) {
+uint32 create_object(RenderObjects* renderObjects, ModelInfo* info) {
   ID3D11Device* device = renderInfo.device;
   float32* vertices = info->vertices;
   uint32 vSize = info->vSize;
@@ -414,7 +419,7 @@ uint32 draw_object(RenderObjects* renderObjects, ModelInfo* info) {
   return index;
 }
 
-uint32 draw_cube(RenderObjects* renderObjects) {
+uint32 create_cube(RenderObjects* renderObjects) {
   // float32 vertices[] = {
   //   -1.0f, -1.0f, -1.0f, 0.0f, 0.0f,
   //    1.0f, -1.0f, -1.0f, 1.0f, 0.0f,
@@ -489,11 +494,11 @@ uint32 draw_cube(RenderObjects* renderObjects) {
   info.vSize = sizeof(vertices);
   info.indices = &indices[0];
   info.iSize = sizeof(indices);
-
-  return draw_object(renderObjects, &info);
+  
+  return create_object(renderObjects, &info);
 }
 
-uint32 draw_plane(RenderObjects* renderObjects) {
+uint32 create_plane(RenderObjects* renderObjects) {
   float32 vertices[] = {
     -1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
      1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
@@ -512,11 +517,11 @@ uint32 draw_plane(RenderObjects* renderObjects) {
   info.indices = &indices[0];
   info.iSize = sizeof(indices);
 
-  return draw_object(renderObjects, &info);
+  return create_object(renderObjects, &info);
 }
 
-uint32 draw_model(RenderObjects* renderObjects, ModelInfo info) {
-  return draw_object(renderObjects, &info);
+uint32 create_model(RenderObjects* renderObjects, ModelInfo info) {
+  return create_object(renderObjects, &info);
 }
 
 void refresh_viewport(int32 x, int32 y, uint32 w, uint32 h) {
