@@ -19,7 +19,7 @@ struct LightBuffer {
   alignas(16) Vec3 position = { 0.0f, 0.0f, 0.0f };
   alignas(16) Vec3 ambientColor = { 0.15f, 0.15f, 0.15f };
   alignas(16) Vec3 diffuseColor = { 0.1f, 0.1f, 0.1f };
-  float32 diffuseIntensity = 1.0f;
+  float32 diffuseIntensity = 20.0f;
   float32 constantAttenuation = 1.0f;
   float32 linearAttenuation = 0.045f;
   float32 quadradicAttenuation = 0.0075f;

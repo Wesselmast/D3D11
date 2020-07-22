@@ -24,7 +24,7 @@ VSOut main(float3 pos : Position, float3 normal : Normal, float2 texcoord : TexC
 
   VSOut vsout;
   vsout.world = (float3)mul(float4(pos, 1.0f), model);
-  vsout.normal = mul(normal, (float3x3)model);
+  vsout.normal = normalize(mul(normal, (float3x3)model));
   vsout.texcoord = texcoord;
   matrix MVP = mul(model, viewProj);
   vsout.pos = mul(float4(pos, 1.0f), MVP); 
