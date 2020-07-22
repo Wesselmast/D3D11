@@ -1,5 +1,4 @@
 TODO:
-- Textures + lighting
 - Shadows
 - Better model loading (maybe I should resolve to a library for this.. assimp pretty gud)
 - Fullscreen support

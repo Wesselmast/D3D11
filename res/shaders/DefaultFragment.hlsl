@@ -12,7 +12,10 @@ cbuffer Material {
   float3 materialColor;
 }
 
-float4 main(float3 world : Position, float3 normal : Normal) : SV_Target {
+Texture2D tex;
+SamplerState s;
+
+float4 main(float3 world : Position, float3 normal : Normal, float2 texcoord : TexCoord) : SV_Target {
   const float3 vToL = lightPos - world;
   const float distToL = length(vToL);
   const float3 dirToL = vToL / distToL;
@@ -20,12 +23,8 @@ float4 main(float3 world : Position, float3 normal : Normal) : SV_Target {
   const float att = 1.0f / (attConst + attLin * distToL + attQuad * (distToL * distToL));
   const float3 diffuse = diffuseColor * diffuseIntensity * att * max(0.0f, dot(dirToL, normal));
   
-  return float4(saturate((diffuse + ambientColor) * materialColor), 1.0f);
+  return float4(saturate((diffuse + ambientColor) * materialColor * tex.Sample(s, texcoord)), 1.0f);
 }
-
-
-/* Texture2D tex; */
-/* SamplerState s; */
 
 /* float4 main(float2 texcoord : TexCoord) : SV_Target { */
 /*   return tex.Sample(s, texcoord); */

@@ -399,7 +399,8 @@ uint32 create_object(RenderObjects* renderObjects, ModelInfo* info) {
   ID3D11InputLayout* inputLayout = nullptr;
   const D3D11_INPUT_ELEMENT_DESC inputElementDesc[] = {
     { "Position", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0 },
-    { "Normal",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+    { "Normal",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+    { "TexCoord", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
   };
 
   uint32 inputCount = sizeof(inputElementDesc) / sizeof(D3D11_INPUT_ELEMENT_DESC);
@@ -422,40 +423,40 @@ uint32 create_object(RenderObjects* renderObjects, ModelInfo* info) {
 uint32 create_cube(RenderObjects* renderObjects) {
   float32 vertices[] = {
     //near
-    -1.0f, -1.0f, -1.0f,   0.0f,  0.0f, -1.0f,
-     1.0f, -1.0f, -1.0f,   0.0f,  0.0f, -1.0f,
-    -1.0f,  1.0f, -1.0f,   0.0f,  0.0f, -1.0f,
-     1.0f,  1.0f, -1.0f,   0.0f,  0.0f, -1.0f,
+    -1.0f, -1.0f, -1.0f,   0.0f,  0.0f, -1.0f,   0.0f,  0.0f,
+     1.0f, -1.0f, -1.0f,   0.0f,  0.0f, -1.0f,   1.0f,  0.0f,
+    -1.0f,  1.0f, -1.0f,   0.0f,  0.0f, -1.0f,   0.0f,  1.0f,
+     1.0f,  1.0f, -1.0f,   0.0f,  0.0f, -1.0f,   1.0f,  1.0f,
      
     //far
-    -1.0f, -1.0f,  1.0f,   0.0f,  0.0f,  1.0f,
-     1.0f, -1.0f,  1.0f,   0.0f,  0.0f,  1.0f,
-    -1.0f,  1.0f,  1.0f,   0.0f,  0.0f,  1.0f,
-     1.0f,  1.0f,  1.0f,   0.0f,  0.0f,  1.0f,
+    -1.0f, -1.0f,  1.0f,   0.0f,  0.0f,  1.0f,   0.0f,  0.0f,
+     1.0f, -1.0f,  1.0f,   0.0f,  0.0f,  1.0f,   1.0f,  0.0f,
+    -1.0f,  1.0f,  1.0f,   0.0f,  0.0f,  1.0f,   0.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,   0.0f,  0.0f,  1.0f,   1.0f,  1.0f,
  
     //left
-    -1.0f, -1.0f, -1.0f,  -1.0f,  0.0f,  0.0f,
-    -1.0f,  1.0f, -1.0f,  -1.0f,  0.0f,  0.0f,
-    -1.0f, -1.0f,  1.0f,  -1.0f,  0.0f,  0.0f,
-    -1.0f,  1.0f,  1.0f,  -1.0f,  0.0f,  0.0f,
+    -1.0f, -1.0f, -1.0f,  -1.0f,  0.0f,  0.0f,   0.0f,  0.0f,
+    -1.0f,  1.0f, -1.0f,  -1.0f,  0.0f,  0.0f,   1.0f,  0.0f,
+    -1.0f, -1.0f,  1.0f,  -1.0f,  0.0f,  0.0f,   0.0f,  1.0f,
+    -1.0f,  1.0f,  1.0f,  -1.0f,  0.0f,  0.0f,   1.0f,  1.0f,
 
     //right
-     1.0f, -1.0f, -1.0f,   1.0f,  0.0f,  0.0f,
-     1.0f,  1.0f, -1.0f,   1.0f,  0.0f,  0.0f,
-     1.0f, -1.0f,  1.0f,   1.0f,  0.0f,  0.0f,
-     1.0f,  1.0f,  1.0f,   1.0f,  0.0f,  0.0f,
+     1.0f, -1.0f, -1.0f,   1.0f,  0.0f,  0.0f,   0.0f,  0.0f,
+     1.0f,  1.0f, -1.0f,   1.0f,  0.0f,  0.0f,   1.0f,  0.0f,
+     1.0f, -1.0f,  1.0f,   1.0f,  0.0f,  0.0f,   0.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,   1.0f,  0.0f,  0.0f,   1.0f,  1.0f,
 
     //bottom
-    -1.0f, -1.0f, -1.0f,   0.0f, -1.0f,  0.0f,
-     1.0f, -1.0f, -1.0f,   0.0f, -1.0f,  0.0f,
-    -1.0f, -1.0f,  1.0f,   0.0f, -1.0f,  0.0f,
-     1.0f, -1.0f,  1.0f,   0.0f, -1.0f,  0.0f,
+    -1.0f, -1.0f, -1.0f,   0.0f, -1.0f,  0.0f,   0.0f,  0.0f,
+     1.0f, -1.0f, -1.0f,   0.0f, -1.0f,  0.0f,   1.0f,  0.0f,
+    -1.0f, -1.0f,  1.0f,   0.0f, -1.0f,  0.0f,   0.0f,  1.0f,
+     1.0f, -1.0f,  1.0f,   0.0f, -1.0f,  0.0f,   1.0f,  1.0f,
 
     //top
-    -1.0f,  1.0f, -1.0f,   0.0f,  1.0f,  0.0f,
-     1.0f,  1.0f, -1.0f,   0.0f,  1.0f,  0.0f,
-    -1.0f,  1.0f,  1.0f,   0.0f,  1.0f,  0.0f,
-     1.0f,  1.0f,  1.0f,   0.0f,  1.0f,  0.0f,
+    -1.0f,  1.0f, -1.0f,   0.0f,  1.0f,  0.0f,   0.0f,  0.0f,
+     1.0f,  1.0f, -1.0f,   0.0f,  1.0f,  0.0f,   1.0f,  0.0f,
+    -1.0f,  1.0f,  1.0f,   0.0f,  1.0f,  0.0f,   0.0f,  1.0f,
+     1.0f,  1.0f,  1.0f,   0.0f,  1.0f,  0.0f,   1.0f,  1.0f,
   };  
 
   uint16 indices[] = {
@@ -469,7 +470,7 @@ uint32 create_cube(RenderObjects* renderObjects) {
 
   ModelInfo info = {};
   info.vertices = &vertices[0];
-  info.stride = sizeof(float32) * 6;
+  info.stride = sizeof(float32) * 8;
   info.vSize = sizeof(vertices);
   info.indices = &indices[0];
   info.iSize = sizeof(indices);
@@ -479,11 +480,11 @@ uint32 create_cube(RenderObjects* renderObjects) {
 
 uint32 create_plane(RenderObjects* renderObjects) {
   float32 vertices[] = {
-    -1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
-     1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
-    -1.0f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
-     1.0f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
-  };  
+    -1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,
+     1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,  1.0f,  0.0f,
+    -1.0f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,  0.0f,  1.0f,
+     1.0f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,  1.0f,  1.0f,
+  };
 
   uint16 indices[] = {
      1, 2, 0,  1, 3, 2
@@ -491,7 +492,7 @@ uint32 create_plane(RenderObjects* renderObjects) {
 
   ModelInfo info = {};
   info.vertices = &vertices[0];
-  info.stride = sizeof(float32) * 6;
+  info.stride = sizeof(float32) * 8;
   info.vSize = sizeof(vertices);
   info.indices = &indices[0];
   info.iSize = sizeof(indices);
