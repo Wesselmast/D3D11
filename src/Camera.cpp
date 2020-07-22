@@ -1,6 +1,6 @@
 #pragma once
 
-const uint32 CAMERA_LIMIT = 1;
+const uint32 CAMERA_LIMIT = 2;
 
 struct Cameras {
   Mat4 viewMatrixes[CAMERA_LIMIT];

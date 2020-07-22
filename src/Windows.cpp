@@ -128,6 +128,7 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       case 'A': input.left = isDown;       return 0;
       case 'S': input.down = isDown;       return 0;
       case 'D': input.right = isDown;      return 0;
+      case 'H': input.editorMode = isDown; return 0;
       case VK_ESCAPE: input.quit = isDown; return 0;
       case VK_MENU:   input.alt  = isDown; return 0;
     }
