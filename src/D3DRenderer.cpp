@@ -93,6 +93,17 @@ void init_ImGUI() {
   ImGui_ImplDX11_Init(device, context);
 }
 
+void start_ImGUI() {
+  ImGui_ImplDX11_NewFrame();
+  ImGui_ImplWin32_NewFrame();
+  ImGui::NewFrame();
+}
+
+void end_ImGUI() {
+  ImGui::Render();
+  ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+}
+
 void init_renderer(HWND window) {
   ID3D11Device* device = nullptr;
   IDXGISwapChain* swapchain = nullptr;

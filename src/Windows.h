@@ -46,3 +46,6 @@ void full_path(char* buffer, const char* fileName);
 static uint16 windowWidth  = 960;   //@Note: These dont update. The mark the start size
 static uint16 windowHeight = 540;  //@Note: These dont update. The mark the start size
 #define ASPECT_RATIO (float32)windowWidth / (float32)windowHeight
+
+//#include "OpenGLRenderer.cpp"
+#include "D3DRenderer.cpp"

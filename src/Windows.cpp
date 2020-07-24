@@ -30,9 +30,11 @@ void lock_mouse(bool32 confine) {
     GetClientRect(activeWindow, &rect);
     MapWindowPoints(activeWindow, nullptr, (POINT*)(&rect), 2);
     ClipCursor(&rect); 
+    ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
   }
   else {
     ClipCursor(nullptr);
+    ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
   }
   ShowCursor(!confine);
   input.mouseLocked = confine; 
@@ -42,7 +44,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 
 LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   if (ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam)) return 1;
-
+  
   switch(uMsg) {
   case WM_SIZE: { 
     windowWidth  = LOWORD(lParam);
@@ -51,13 +53,21 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   }
   case WM_ACTIVATE: {
     activeWindow = hwnd;
+    
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui::StyleColorsDark();
+    
+    ImGui_ImplWin32_Init(hwnd);
+    init_ImGUI();
+    
     lock_mouse(wParam & WA_ACTIVE);
     return 0;
   }
   case WM_LBUTTONDOWN: {
     SetForegroundWindow(hwnd);
     activeWindow = hwnd;
-    lock_mouse(true);
     return 0;
   }
   case WM_CREATE: {
@@ -202,6 +212,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
   rawInputDevice.usUsage = 0x02;
   rawInputDevice.dwFlags = 0;
   rawInputDevice.hwndTarget = nullptr;
+
   bool32 checkIfRegistered = RegisterRawInputDevices(&rawInputDevice, 1, sizeof(RAWINPUTDEVICE)) != FALSE;
   assert_(checkIfRegistered, "Couldn't register input device");
 
@@ -211,15 +222,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
   
   ShowWindow(window, SW_SHOW);
   UpdateWindow(window);
-
-  IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
-  ImGuiIO& io = ImGui::GetIO(); (void)io;
-  ImGui::StyleColorsDark();
-  io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
-
-  ImGui_ImplWin32_Init(window);
-  init_ImGUI();
   
   std::chrono::high_resolution_clock timer;
   float64 time = 0.0;
@@ -236,7 +238,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
     
     if(game_update(&gameMemory, &input, dt, time)) PostQuitMessage(0);
     swap_buffers(true);
-
     clear_buffer(0.5f, 0.0f, 0.5f, 1.0f);
 
     dt = std::chrono::duration<float64>(timer.now() - start).count();
