@@ -1,50 +1,4 @@
-#include <cstdint>
-#include <cstdlib>
-#include <stdio.h>
-#include <string.h>
-
-typedef uint8_t  uint8;
-typedef uint16_t uint16;
-typedef uint32_t uint32;
-typedef uint64_t uint64;
-
-typedef int8_t  int8;
-typedef int16_t int16;
-typedef int32_t int32;
-typedef int64_t int64;
-
-typedef float  float32;
-typedef double float64;
-
-typedef int32_t bool32;
-
-void pop_error();
-
-#if defined(DEBUG)
-#define log_(message, ...) printf(message, ##__VA_ARGS__)
-#define assert(condition, message, ...) \
-  if(!(condition)) { \
-    log_(message, ##__VA_ARGS__); \
-    log_("\n"); \
-    pop_error(); \
-    exit(1); \
-  }
-#else
-#define log_(message, ...)
-#define assert(condition, message, ...)
-#endif
-
-void lock_mouse(bool32 confine);
-void full_path(char* buffer, const char* fileName);
-  
-#include "Math.cpp"
-#include "File.cpp"
-
-static uint16 windowWidth  = 960;   //@Note: These dont update. The mark the start size
-static uint16 windowHeight = 540;  //@Note: These dont update. The mark the start size
-#define ASPECT_RATIO (float32)windowWidth / (float32)windowHeight
-
-#include "Memory.h"
+#include "Windows.h"
 #include "Game.cpp"
 
 #include <windows.h>
@@ -84,7 +38,11 @@ void lock_mouse(bool32 confine) {
   input.mouseLocked = confine; 
 } 
 
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+  if (ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam)) return 1;
+
   switch(uMsg) {
   case WM_SIZE: { 
     windowWidth  = LOWORD(lParam);
@@ -142,7 +100,7 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       return 0;
     }
     char raw[size];
-    if(GetRawInputData((HRAWINPUT)lParam, RID_INPUT, (void*)(&raw), &size, sizeof(RAWINPUTHEADER)) != size) {    
+    if(GetRawInputData((HRAWINPUT)lParam, RID_INPUT, (void*)(&raw), &size, sizeof(RAWINPUTHEADER)) != size) { 
       log_("input missed 2\n");
       return 0;
     }
@@ -180,11 +138,11 @@ HWND create_window(uint16 width, uint16 height, const char* name, bool32 fullscr
   windowClass.hCursor = LoadCursor(0, IDC_ARROW);
   
   HRESULT registerResult = RegisterClass(&windowClass); 
-  assert(registerResult, "win32: Couldn't register window class!");
+  assert_(registerResult, "win32: Couldn't register window class!");
   
   HWND hwnd = CreateWindowEx(0, windowClass.lpszClassName, name, WS_OVERLAPPEDWINDOW | WS_VISIBLE,
 			     CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, windowClass.hInstance, 0);
-  assert(hwnd, "win32: Couldn't create a window!");
+  assert_(hwnd, "win32: Couldn't create a window!");
 
   PIXELFORMATDESCRIPTOR pfd;
   memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
@@ -196,10 +154,10 @@ HWND create_window(uint16 width, uint16 height, const char* name, bool32 fullscr
 
   HDC hdc = GetDC(hwnd);
   int32 pixelFormat = ChoosePixelFormat(hdc, &pfd);
-  assert(pixelFormat, "win32: PixelFormat is not valid!");
+  assert_(pixelFormat, "win32: PixelFormat is not valid!");
   HRESULT pixelFormatResult = SetPixelFormat(hdc, pixelFormat, &pfd); 
   
-  assert(pixelFormatResult, "win32: Couldn't set the PixelFormat!");
+  assert_(pixelFormatResult, "win32: Couldn't set the PixelFormat!");
   DescribePixelFormat(hdc, pixelFormat, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
 
   ReleaseDC(hwnd, hdc);
@@ -227,12 +185,12 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
 #endif
   
   HWND window = create_window(windowWidth, windowHeight, name, false);
-  assert(window, "win32: Couldn't create a window!");
+  assert_(window, "win32: Couldn't create a window!");
 
   HDC hdc = GetDC(window);
   HGLRC hrc = wglCreateContext(hdc);
   HRESULT result = wglMakeCurrent(hdc, hrc); 
-  assert(result, "Coulnd't make context current");
+  assert_(result, "Coulnd't make context current");
   
   fptr_wglSwapIntervalEXT* wglSwapInterval = (fptr_wglSwapIntervalEXT*)wglGetProcAddress("wglSwapIntervalEXT");
   if(wglSwapInterval) {
@@ -245,7 +203,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
   rawInputDevice.dwFlags = 0;
   rawInputDevice.hwndTarget = nullptr;
   bool32 checkIfRegistered = RegisterRawInputDevices(&rawInputDevice, 1, sizeof(RAWINPUTDEVICE)) != FALSE;
-  assert(checkIfRegistered, "Couldn't register input device");
+  assert_(checkIfRegistered, "Couldn't register input device");
 
   GameMemory gameMemory = {};
   gameMemory.size = megabytes(64);
@@ -254,6 +212,15 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
   ShowWindow(window, SW_SHOW);
   UpdateWindow(window);
 
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO& io = ImGui::GetIO(); (void)io;
+  ImGui::StyleColorsDark();
+  io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+
+  ImGui_ImplWin32_Init(window);
+  init_ImGUI();
+  
   std::chrono::high_resolution_clock timer;
   float64 time = 0.0;
   float64 dt = 0.015;
@@ -267,9 +234,10 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
       DispatchMessage(&message);
     }
     
-    clear_buffer(0.5f, 0.0f, 0.5f, 1.0f);
     if(game_update(&gameMemory, &input, dt, time)) PostQuitMessage(0);
     swap_buffers(true);
+
+    clear_buffer(0.5f, 0.0f, 0.5f, 1.0f);
 
     dt = std::chrono::duration<float64>(timer.now() - start).count();
     time += dt;

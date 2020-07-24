@@ -11,7 +11,7 @@ set linkerpaths=-LLib\\10.0.17763.0\\um\\x86\\
 set includepaths=-IInclude\\10.0.17763.0\\ 
 set libraries=-lopengl32 -luser32 -lgdi32 -ld3d11
 set compiler=clang++
-set caching=
+set caching=ccache
 
 IF NOT [%caching%] == [] (
    WHERE %caching%

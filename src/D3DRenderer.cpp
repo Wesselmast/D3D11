@@ -78,11 +78,19 @@ static HRESULT compile_fragment_shader(ID3DBlob** blob, LPCWSTR path) {
 }
 
 void test_renderer() {
-  assert(renderInfo.device, "device has not been initialized!");
-  assert(renderInfo.swapchain, "swapchain has not been initialized!");
-  assert(renderInfo.context, "context has not been initialized!");
-  assert(renderInfo.target, "rendertarget has not been initialized!");
-  assert(renderInfo.dsv, "depthstencil has not been initialized!");
+  assert_(renderInfo.device, "device has not been initialized!");
+  assert_(renderInfo.swapchain, "swapchain has not been initialized!");
+  assert_(renderInfo.context, "context has not been initialized!");
+  assert_(renderInfo.target, "rendertarget has not been initialized!");
+  assert_(renderInfo.dsv, "depthstencil has not been initialized!");
+}
+
+void init_ImGUI() {
+  ID3D11DeviceContext* context = renderInfo.context;
+  ID3D11Device* device = renderInfo.device;
+  assert_(device, "IMGUI: device has not been initialized!");
+  assert_(context, "IMGUI: context has not been initialized!")
+  ImGui_ImplDX11_Init(device, context);
 }
 
 void init_renderer(HWND window) {
@@ -124,9 +132,9 @@ void init_renderer(HWND window) {
     &context
   );
     
-  assert(swapchain, "Swapchain coulnd't be initialized");
-  assert(device, "Device coulnd't be initialized");
-  assert(context, "Context coulnd't be initialized");
+  assert_(swapchain, "Swapchain coulnd't be initialized");
+  assert_(device, "Device coulnd't be initialized");
+  assert_(context, "Context coulnd't be initialized");
   
   ID3D11Resource* backBuffer = nullptr;
   swapchain->GetBuffer(0, __uuidof(ID3D11Resource), ((void**)&backBuffer));
@@ -299,7 +307,7 @@ void update_render_targets() {
 
 void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const Vec3& DEBUGVec) {
   ID3D11DeviceContext* context = renderInfo.context;
- 
+
   update_render_targets();
   update_view_projection(viewProjection);
  
@@ -328,7 +336,7 @@ void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const
     context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
     if(resourceView) {
-      assert(sampler, "In order to display a resource view the renderer needs a sampler!");
+      assert_(sampler, "In order to display a resource view the renderer needs a sampler!");
       context->PSSetSamplers(0, 1, &sampler);
       context->PSSetShaderResources(0, 1, &resourceView);
     }
@@ -354,7 +362,7 @@ uint32 create_object(RenderObjects* renderObjects, ModelInfo* info) {
   uint32 iSize = info->iSize;
   uint32 index = renderObjects->count;
 
-  assert(index < RENDER_OBJECT_LIMIT, "Cannot create more than %d objects!", RENDER_OBJECT_LIMIT);
+  assert_(index < RENDER_OBJECT_LIMIT, "Cannot create more than %d objects!", RENDER_OBJECT_LIMIT);
 
   ID3D11Buffer* vertexBuffer;
   create_vertex_buffer(&vertexBuffer, vertices, vSize, stride);

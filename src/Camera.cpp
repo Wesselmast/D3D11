@@ -9,7 +9,7 @@ struct Cameras {
 };
 
 Mat4 get_view_projection(Cameras* cameras, const uint32& camera) {
-  assert((camera < cameras->count) & (camera >= 0), "Trying to get viewprojection matrix of nonexistent camera!");
+  assert_((camera < cameras->count) & (camera >= 0), "Trying to get viewprojection matrix of nonexistent camera!");
   return cameras->viewMatrixes[camera] * cameras->projectionMatrixes[camera];
 }
 

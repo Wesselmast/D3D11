@@ -40,7 +40,7 @@ FileInfo load_file(const char* path) {
   char fPath[512];
   full_path(fPath, path);
   FILE* file = fopen(fPath, "rb");
-  assert(file, "Trying to load a file that doesn't exist!");
+  assert_(file, "Trying to load a file that doesn't exist!");
 
   uint32 size;
   char* memory;
@@ -51,7 +51,7 @@ FileInfo load_file(const char* path) {
   if(size != fread(memory, 1, size, file)) {
     free(memory);
     fclose(file);
-    assert(false, "Filesize is not correct. Something went wrong when reading the file");
+    assert_(false, "Filesize is not correct. Something went wrong when reading the file");
     return { nullptr, 0 };
   }
   fclose(file);
@@ -65,7 +65,7 @@ FileInfo load_file(const char* path) {
 
 Bitmap load_bitmap(const char* path) {
   FileInfo info = load_file(path);
-  assert(info.size, "Trying to load a bitmap that's of size 0");
+  assert_(info.size, "Trying to load a bitmap that's of size 0");
 
   BitmapHeader* header = (BitmapHeader*)info.memory;
 
@@ -80,7 +80,7 @@ ModelInfo load_obj(const char* path) {
   char fPath[512];
   full_path(fPath, path);
   FILE* file = fopen(fPath, "r");
-  assert(file, "Trying to load a file that doesn't exist!");
+  assert_(file, "Trying to load a file that doesn't exist!");
 
   char* pLine;
   char line[256]; 
