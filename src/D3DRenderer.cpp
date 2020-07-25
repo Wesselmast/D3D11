@@ -537,6 +537,7 @@ void refresh_viewport(int32 x, int32 y, uint32 w, uint32 h) {
 
 void swap_buffers(bool32 vSync) {
   IDXGISwapChain* swapchain = renderInfo.swapchain;
+  swapchain->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, 0);
   swapchain->Present(vSync, 0);
 }
 
