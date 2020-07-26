@@ -56,7 +56,7 @@ struct RenderObjects {
 };
  
 static RenderInfo renderInfo; // @CleanUp: Maybe have this not be a global variable
-static Bitmap standardBitmap;
+static Texture standardTexture;
 
 #define d3d_assert(condition) \
   if(FAILED(condition)) { \
@@ -114,6 +114,49 @@ void start_ImGUI() {
 void end_ImGUI() {
   ImGui::Render();
   ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+}
+
+void create_texture(ID3D11ShaderResourceView** view, Bitmap* bmp) {
+  ID3D11Device* device = renderInfo.device;
+
+  D3D11_TEXTURE2D_DESC textureDesc = {};
+  textureDesc.Width = bmp->width;
+  textureDesc.Height = bmp->height;
+  textureDesc.MipLevels = 1;
+  textureDesc.ArraySize = 1;
+  textureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+  textureDesc.SampleDesc.Count = 1;
+  textureDesc.SampleDesc.Quality = 0;
+  textureDesc.Usage = D3D11_USAGE_DEFAULT;
+  textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+  textureDesc.CPUAccessFlags = 0;
+  textureDesc.MiscFlags = 0;
+  
+  D3D11_SUBRESOURCE_DATA textureData = {};
+  textureData.pSysMem = bmp->memory;
+  textureData.SysMemPitch = bmp->width * 4;
+    
+  ID3D11Texture2D* texture;
+  d3d_assert(device->CreateTexture2D(&textureDesc, &textureData, &texture));
+  
+  D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc = {};
+  viewDesc.Format = textureDesc.Format;
+  viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+  viewDesc.Texture2D.MostDetailedMip = 0;
+  viewDesc.Texture2D.MipLevels = 1;
+  
+  d3d_assert(device->CreateShaderResourceView(texture, &viewDesc, view));
+  texture->Release();
+}
+
+Texture make_texture(Bitmap bmp) {
+  ID3D11ShaderResourceView* rsv;
+  create_texture(&rsv, &bmp);
+
+  Texture result = {};
+  result.bitmap = bmp;
+  result.resource = rsv;
+  return result;
 }
 
 void init_renderer(HWND window) {
@@ -201,7 +244,7 @@ void init_renderer(HWND window) {
   renderInfo.target = target;
   renderInfo.dsv = dsv;
 
-  standardBitmap = load_bitmap("res\\textures\\T_CheckerBoard.bmp");
+  standardTexture = make_texture(load_bitmap("res\\textures\\T_CheckerBoard.bmp"));
 }
 
 void create_vertex_buffer(ID3D11Buffer** vertexBuffer, const void* vertices, uint32 size, uint32 stride) {
@@ -218,39 +261,6 @@ void create_vertex_buffer(ID3D11Buffer** vertexBuffer, const void* vertices, uin
   VBData.pSysMem = vertices;
 
   d3d_assert(device->CreateBuffer(&VBDesc, &VBData, vertexBuffer));
-}
-
-void create_texture(ID3D11ShaderResourceView** view, Bitmap* bmp) {
-  ID3D11Device* device = renderInfo.device;
-
-  D3D11_TEXTURE2D_DESC textureDesc = {};
-  textureDesc.Width = bmp->width;
-  textureDesc.Height = bmp->height;
-  textureDesc.MipLevels = 1;
-  textureDesc.ArraySize = 1;
-  textureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-  textureDesc.SampleDesc.Count = 1;
-  textureDesc.SampleDesc.Quality = 0;
-  textureDesc.Usage = D3D11_USAGE_DEFAULT;
-  textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-  textureDesc.CPUAccessFlags = 0;
-  textureDesc.MiscFlags = 0;
-  
-  D3D11_SUBRESOURCE_DATA textureData = {};
-  textureData.pSysMem = bmp->memory;
-  textureData.SysMemPitch = bmp->width * 4;
-    
-  ID3D11Texture2D* texture;
-  d3d_assert(device->CreateTexture2D(&textureDesc, &textureData, &texture));
-  
-  D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc = {};
-  viewDesc.Format = textureDesc.Format;
-  viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-  viewDesc.Texture2D.MostDetailedMip = 0;
-  viewDesc.Texture2D.MipLevels = 1;
-  
-  d3d_assert(device->CreateShaderResourceView(texture, &viewDesc, view));
-  texture->Release();
 }
 
 void create_index_buffer(ID3D11Buffer** indexBuffer, const void* indices, uint32 size, uint32 stride) {
@@ -297,16 +307,6 @@ void set_object_transform(RenderObjects* renderObjects, uint32 index, const Tran
   if(renderObjects->transformBuffers[index]) (renderObjects->transformBuffers[index])->Release();
   renderObjects->transformBuffers[index] = transformBuffer;
   renderObjects->descriptors[index].transform = transform; 
-}
-
-Texture make_texture(Bitmap bmp) {
-  ID3D11ShaderResourceView* rsv;
-  create_texture(&rsv, &bmp);
-
-  Texture result = {};
-  result.bitmap = bmp;
-  result.resource = rsv;
-  return result;
 }
 
 void set_object_texture(RenderObjects* renderObjects, uint32 index, Texture& texture) {    
@@ -364,6 +364,8 @@ void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const
   lightBuffer->Release();
  
   for(uint32 i = 0; i < renderObjects->count; i++) {
+    if(!renderObjects->vertexBuffers[i]) continue;
+
     ID3D11Buffer* vertexBuffer = renderObjects->vertexBuffers[i];
     uint32 vertexBufferStride = renderObjects->vertexBufferStrides[i];
     ID3D11Buffer* indexBuffer = renderObjects->indexBuffers[i];
@@ -399,6 +401,40 @@ void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const
   }
 }
 
+int32 get_last_valid(RenderObjects* renderObjects) {
+  int32 index = renderObjects->count - 1;
+  while(!renderObjects->vertexBuffers[index] && index >= 0) {
+    index--;
+  }
+  return index;
+}
+
+void destroy_object(RenderObjects* renderObjects, int32 index) {     //maybe do this differently. compress the struct after deleting from it? 
+  bool32 check = index > -1 && index <= RENDER_OBJECT_LIMIT; 
+  assert_(check, "trying to destroy element out of range");
+  assert_(renderObjects->vertexBuffers[index], "trying to destroy nonexistent object");
+
+  renderObjects->vertexBuffers[index]->Release();
+  renderObjects->vertexBuffers[index] = nullptr;
+  renderObjects->vertexBufferStrides[index] = 0;
+  renderObjects->indexBuffers[index]->Release();
+  renderObjects->indexBuffers[index] = nullptr;
+  renderObjects->indexBufferSizes[index] = 0;
+  renderObjects->vertexShaders[index]->Release();
+  renderObjects->vertexShaders[index] = nullptr;
+  renderObjects->fragmentShaders[index]->Release();
+  renderObjects->fragmentShaders[index] = nullptr;
+  renderObjects->inputLayouts[index]->Release();
+  renderObjects->inputLayouts[index] = nullptr;
+  renderObjects->samplers[index]->Release();
+  renderObjects->samplers[index] = nullptr;
+  renderObjects->transformBuffers[index]->Release();
+  renderObjects->transformBuffers[index] = nullptr;
+  renderObjects->materialBuffers[index]->Release();
+  renderObjects->materialBuffers[index] = nullptr;
+  renderObjects->descriptors[index] = {};
+}
+
 uint32 create_object(RenderObjects* renderObjects, ModelInfo* info) {
   ID3D11Device* device = renderInfo.device;
   float32* vertices = info->vertices;
@@ -406,7 +442,13 @@ uint32 create_object(RenderObjects* renderObjects, ModelInfo* info) {
   uint32 stride = info->stride;
   uint16* indices = info->indices;
   uint32 iSize = info->iSize;
-  uint32 index = renderObjects->count;
+
+  uint32 index = 0;
+  while(renderObjects->vertexBuffers[index]) {
+    index++;
+  }
+
+  log_("%d\n", index);
 
   assert_(index < RENDER_OBJECT_LIMIT, "Cannot create more than %d objects!", RENDER_OBJECT_LIMIT);
 
@@ -465,7 +507,7 @@ uint32 create_object(RenderObjects* renderObjects, ModelInfo* info) {
   desc.transform.position = vec3_from_scalar(0.0f);
   desc.transform.rotation = vec3_from_scalar(0.0f);
   desc.transform.scale    = vec3_from_scalar(1.0f);
-  desc.texture = make_texture(standardBitmap);
+  desc.texture = standardTexture;
 
   set_object_descriptor(renderObjects, index, &desc); 
 
