@@ -29,10 +29,15 @@ struct Material {
   alignas(16) Vec3 materialColor = { 0.7f, 0.7f, 0.9f };;
 };
 
+struct Texture {
+  Bitmap bitmap;
+  void* resource;
+};
+
 struct ObjectDescriptor {
   Transform transform;
   Material material;
-  Bitmap bitmap;
+  Texture texture;
 };
 
 struct RenderObjects {
@@ -43,7 +48,6 @@ struct RenderObjects {
   ID3D11VertexShader* vertexShaders[RENDER_OBJECT_LIMIT];
   ID3D11PixelShader* fragmentShaders[RENDER_OBJECT_LIMIT];
   ID3D11InputLayout* inputLayouts[RENDER_OBJECT_LIMIT];
-  ID3D11ShaderResourceView* resourceViews[RENDER_OBJECT_LIMIT];
   ID3D11SamplerState* samplers[RENDER_OBJECT_LIMIT];
   ID3D11Buffer* transformBuffers[RENDER_OBJECT_LIMIT];
   ID3D11Buffer* materialBuffers[RENDER_OBJECT_LIMIT];
@@ -52,6 +56,7 @@ struct RenderObjects {
 };
  
 static RenderInfo renderInfo; // @CleanUp: Maybe have this not be a global variable
+static Bitmap standardBitmap;
 
 #define d3d_assert(condition) \
   if(FAILED(condition)) { \
@@ -195,6 +200,8 @@ void init_renderer(HWND window) {
   renderInfo.device = device;
   renderInfo.target = target;
   renderInfo.dsv = dsv;
+
+  standardBitmap = load_bitmap("res\\textures\\T_CheckerBoard.bmp");
 }
 
 void create_vertex_buffer(ID3D11Buffer** vertexBuffer, const void* vertices, uint32 size, uint32 stride) {
@@ -279,25 +286,31 @@ void create_constant_buffer(ID3D11Buffer** constantBuffer, const void* mat, uint
 }
 
 void set_object_transform(RenderObjects* renderObjects, uint32 index, const Transform& transform) {
-    Mat4 mat = 
-      mat4_transpose(
+  Mat4 mat = 
+    mat4_transpose(
       mat4_scaling(transform.scale) *
       mat4_euler_rotation(transform.rotation) *
       mat4_translation(transform.position));    
 
-    ID3D11Buffer* transformBuffer;
-    create_constant_buffer(&transformBuffer, &mat, sizeof(Mat4));
-    if(renderObjects->transformBuffers[index]) (renderObjects->transformBuffers[index])->Release();
-    renderObjects->transformBuffers[index] = transformBuffer;
-    renderObjects->descriptors[index].transform = transform; 
+  ID3D11Buffer* transformBuffer;
+  create_constant_buffer(&transformBuffer, &mat, sizeof(Mat4));
+  if(renderObjects->transformBuffers[index]) (renderObjects->transformBuffers[index])->Release();
+  renderObjects->transformBuffers[index] = transformBuffer;
+  renderObjects->descriptors[index].transform = transform; 
 }
 
-void set_object_texture(RenderObjects* renderObjects, uint32 index, Bitmap& bmp) {    
-    ID3D11ShaderResourceView* resourceView;
-    create_texture(&resourceView, &bmp);
-    if(renderObjects->resourceViews[index]) (renderObjects->resourceViews[index])->Release();
-    renderObjects->resourceViews[index] = resourceView;
-    renderObjects->descriptors[index].bitmap = bmp;
+Texture make_texture(Bitmap bmp) {
+  ID3D11ShaderResourceView* rsv;
+  create_texture(&rsv, &bmp);
+
+  Texture result = {};
+  result.bitmap = bmp;
+  result.resource = rsv;
+  return result;
+}
+
+void set_object_texture(RenderObjects* renderObjects, uint32 index, Texture& texture) {    
+  renderObjects->descriptors[index].texture = texture;
 }
 
 void set_object_material(RenderObjects* renderObjects, uint32 index, Material& material) {
@@ -309,8 +322,9 @@ void set_object_material(RenderObjects* renderObjects, uint32 index, Material& m
 }
 
 void set_object_descriptor(RenderObjects* renderObjects, uint32 index, ObjectDescriptor* descriptor) {
+  assert_(descriptor, "Descriptor is not valid!");
   set_object_material(renderObjects, index, descriptor->material);
-  //set_object_texture(renderObjects, index, descriptor->bitmap);
+  set_object_texture(renderObjects, index, descriptor->texture);
   set_object_transform(renderObjects, index, descriptor->transform);
 }
 
@@ -355,7 +369,7 @@ void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const
     ID3D11Buffer* indexBuffer = renderObjects->indexBuffers[i];
     ID3D11Buffer* transformBuffer = renderObjects->transformBuffers[i];
     uint32 indexBufferSize = renderObjects->indexBufferSizes[i];
-    ID3D11ShaderResourceView* resourceView = renderObjects->resourceViews[i];
+    void* resourceView = renderObjects->descriptors[i].texture.resource;
     ID3D11VertexShader* vertexShader = renderObjects->vertexShaders[i];
     ID3D11PixelShader* fragmentShader = renderObjects->fragmentShaders[i];
     ID3D11SamplerState* sampler = renderObjects->samplers[i];
@@ -369,7 +383,8 @@ void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const
     if(resourceView) {
       assert_(sampler, "In order to display a resource view the renderer needs a sampler!");
       context->PSSetSamplers(0, 1, &sampler);
-      context->PSSetShaderResources(0, 1, &resourceView);
+      ID3D11ShaderResourceView* cResourceView = (ID3D11ShaderResourceView*)resourceView; 
+      context->PSSetShaderResources(0, 1, &cResourceView);
     }
 
     context->PSSetConstantBuffers(1, 1, &materialBuffer);
@@ -446,11 +461,13 @@ uint32 create_object(RenderObjects* renderObjects, ModelInfo* info) {
   d3d_assert(device->CreateInputLayout(inputElementDesc, inputCount, vBlob->GetBufferPointer(), vBlob->GetBufferSize(), &inputLayout));
   renderObjects->inputLayouts[index] = inputLayout;
 
-  renderObjects->resourceViews[index] = nullptr;
-  set_object_transform(renderObjects, index, {vec3_from_scalar(0.0f), vec3_from_scalar(0.0f), vec3_from_scalar(1.0f)});
+  ObjectDescriptor desc = {};
+  desc.transform.position = vec3_from_scalar(0.0f);
+  desc.transform.rotation = vec3_from_scalar(0.0f);
+  desc.transform.scale    = vec3_from_scalar(1.0f);
+  desc.texture = make_texture(standardBitmap);
 
-  Material mat = {};
-  set_object_material(renderObjects, index, mat); 
+  set_object_descriptor(renderObjects, index, &desc); 
 
   vBlob->Release();
   fBlob->Release();
