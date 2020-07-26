@@ -2,7 +2,6 @@ TODO:
 - Shadows
 - Better model loading (maybe I should resolve to a library for this.. assimp pretty gud)
 - Fullscreen support
-- Allow for objects to be drawn at runtime
 - Networking (Nonblocking sockets)
 - Demo level should be there as soon as possible!
 - Fix up viewports : ~
