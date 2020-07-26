@@ -31,6 +31,12 @@ struct Vec4 {
   float32 w;
 };
 
+struct Transform {
+  Vec3 position;
+  Vec3 rotation;
+  Vec3 scale;
+};
+
 float32 clamp(float32 value, float32 min, float32 max) {
   if(value > max) return max;
   if(value < min) return min;

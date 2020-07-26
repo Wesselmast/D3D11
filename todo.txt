@@ -5,5 +5,4 @@ TODO:
 - Allow for objects to be drawn at runtime
 - Networking (Nonblocking sockets)
 - Demo level should be there as soon as possible!
-- GUI
 - Fix up viewports : ~
