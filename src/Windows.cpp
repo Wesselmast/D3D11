@@ -65,11 +65,6 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     lock_mouse(wParam & WA_ACTIVE);
     return 0;
   }
-  case WM_LBUTTONDOWN: {
-    SetForegroundWindow(hwnd);
-    activeWindow = hwnd;
-    return 0;
-  }
   case WM_CREATE: {
     init_renderer(hwnd);
     return 0;
@@ -83,6 +78,16 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     input.mouseWheel += (float)GET_WHEEL_DELTA_WPARAM(wParam)/(float)WHEEL_DELTA;
     return 0;
   }
+  case WM_LBUTTONDOWN: {
+    SetForegroundWindow(hwnd);
+    activeWindow = hwnd;
+    input.fire = true; 
+    return 0;
+  }
+  case WM_LBUTTONUP: {
+    input.fire = false; 
+    return 0;
+  }
 
   case WM_SYSKEYDOWN:
   case WM_SYSKEYUP:
@@ -92,13 +97,13 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     bool32 isDown  = ((lParam & (1 << 31)) == 0);
     if(wasDown == isDown) return 0;
     switch(wParam) {
-      case 'W': input.up = isDown;         return 0;
-      case 'A': input.left = isDown;       return 0;
-      case 'S': input.down = isDown;       return 0;
-      case 'D': input.right = isDown;      return 0;
-      case 'H': input.editorMode = isDown; return 0;
-      case VK_ESCAPE: input.quit = isDown; return 0;
-      case VK_MENU:   input.alt  = isDown; return 0;
+      case 'W': input.up = isDown;          return 0;
+      case 'A': input.left = isDown;        return 0;
+      case 'S': input.down = isDown;        return 0;
+      case 'D': input.right = isDown;       return 0;
+      case 'H': input.editorMode = isDown;  return 0;
+      case VK_ESCAPE:  input.quit = isDown; return 0;
+      case VK_MENU:    input.alt  = isDown; return 0;
     }
     return 0;
   }

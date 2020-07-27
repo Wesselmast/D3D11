@@ -97,6 +97,24 @@ Vec3 operator+(const Vec3& a, const Vec3& b) {
   return result;
 }
 
+Vec3 operator-(const Vec3& a, const Vec3& b) {
+  Vec3 result = {};
+  result.x = a.x - b.x;
+  result.y = a.y - b.y;
+  result.z = a.z - b.z;
+  return result;
+}
+
+Vec3 vec3_lerp(const Vec3& a, const Vec3& b, float32 t) {
+  return b * t + a * (1.0f - t);
+}
+
+bool vec3_equal(const Vec3& a, const Vec3& b, float32 bounds) {
+  return a.x - bounds <= b.x && a.x + bounds >= b.x &&
+         a.y - bounds <= b.y && a.y + bounds >= b.y &&
+         a.z - bounds <= b.z && a.z + bounds >= b.z;
+}
+
 Vec3 vec3_normalize(const Vec3& vec) {
   Vec3 result = {};
   float32 len = vec3_length(vec);

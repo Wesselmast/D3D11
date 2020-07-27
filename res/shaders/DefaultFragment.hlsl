@@ -10,6 +10,7 @@ cbuffer Light {
 
 cbuffer Material {
   float3 materialColor;
+  float2 tiling;
 }
 
 Texture2D tex;
@@ -23,7 +24,7 @@ float4 main(float3 world : Position, float3 normal : Normal, float2 texcoord : T
   const float att = 1.0f / (attConst + attLin * distToL + attQuad * (distToL * distToL));
   const float3 diffuse = diffuseColor * diffuseIntensity * att * max(0.0f, dot(dirToL, normal));
   
-  return float4(saturate((diffuse + ambientColor) * materialColor * tex.Sample(s, texcoord)), 1.0f);
+  return float4(saturate((diffuse + ambientColor) * materialColor * tex.Sample(s, texcoord * tiling)), 1.0f);
 }
 
 /* float4 main(float2 texcoord : TexCoord) : SV_Target { */

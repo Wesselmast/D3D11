@@ -26,7 +26,8 @@ struct LightBuffer {
 };
 
 struct Material {
-  alignas(16) Vec3 materialColor = { 0.7f, 0.7f, 0.9f };;
+  alignas(16) Vec3 materialColor = { 0.7f, 0.7f, 0.9f };
+  alignas(16) Vec2 tiling = { 1.0f, 1.0f };
 };
 
 struct Texture {
@@ -35,6 +36,7 @@ struct Texture {
 };
 
 struct ObjectDescriptor {
+  const char* name = "Default";
   Transform transform;
   Material material;
   Texture texture;
@@ -350,6 +352,10 @@ void update_render_targets() {
   context->OMSetRenderTargets(1, &target, dsv);
 }
 
+bool is_object_valid(RenderObjects* renderObjects, uint32 index) {
+  return renderObjects->vertexBuffers[index];
+}
+
 void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const Vec3& DEBUGVec) {
   ID3D11DeviceContext* context = renderInfo.context;
 
@@ -364,7 +370,7 @@ void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const
   lightBuffer->Release();
  
   for(uint32 i = 0; i < renderObjects->count; i++) {
-    if(!renderObjects->vertexBuffers[i]) continue;
+    if(!is_object_valid(renderObjects, i)) continue;
 
     ID3D11Buffer* vertexBuffer = renderObjects->vertexBuffers[i];
     uint32 vertexBufferStride = renderObjects->vertexBufferStrides[i];
@@ -403,7 +409,7 @@ void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const
 
 int32 get_last_valid(RenderObjects* renderObjects) {
   int32 index = renderObjects->count - 1;
-  while(!renderObjects->vertexBuffers[index] && index >= 0) {
+  while(!is_object_valid(renderObjects, index) && index >= 0) {
     index--;
   }
   return index;
@@ -444,11 +450,9 @@ uint32 create_object(RenderObjects* renderObjects, ModelInfo* info) {
   uint32 iSize = info->iSize;
 
   uint32 index = 0;
-  while(renderObjects->vertexBuffers[index]) {
+  while(is_object_valid(renderObjects, index)) {
     index++;
   }
-
-  log_("%d\n", index);
 
   assert_(index < RENDER_OBJECT_LIMIT, "Cannot create more than %d objects!", RENDER_OBJECT_LIMIT);
 
