@@ -36,7 +36,7 @@ struct Texture {
 };
 
 struct ObjectDescriptor {
-  const char* name = "Default";
+  String name = "Default";
   Transform transform;
   Material material;
   Texture texture;
@@ -508,6 +508,7 @@ uint32 create_object(RenderObjects* renderObjects, ModelInfo* info) {
   renderObjects->inputLayouts[index] = inputLayout;
 
   ObjectDescriptor desc = {};
+  desc.name = "Default";
   desc.transform.position = vec3_from_scalar(0.0f);
   desc.transform.rotation = vec3_from_scalar(0.0f);
   desc.transform.scale    = vec3_from_scalar(1.0f);
