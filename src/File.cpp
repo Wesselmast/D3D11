@@ -1,6 +1,7 @@
 #pragma once
 #include <stdlib.h>
 #include <string.h>
+#include <fstream>
 
 struct FileInfo {
   char* memory;
@@ -133,4 +134,18 @@ ModelInfo load_obj(const char* path) {
   info.indices = &indices[0];
   info.iSize = indexCount * sizeof(uint16);
   return info;
+}
+
+void save_level(void* contents, uint32 contentByteSize, const char* path) {
+  char fPath[512];
+  full_path(fPath, path);
+
+  log_("%s\n", fPath);
+
+  std::ofstream file(fPath, std::ios::out | std::ios::binary);
+  assert_(file, "Cannot open file %s\n", fPath); 
+  file.write((char*)contents, contentByteSize);
+  file.close();
+  
+  assert_(file.good(), "Couldn't write to file %s\n", fPath);
 }
