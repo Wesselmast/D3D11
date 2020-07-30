@@ -39,9 +39,9 @@ void pop_error();
 void lock_mouse(bool32 confine);
 void full_path(char* buffer, const char* fileName);
   
+#include "Utility.cpp"
 #include "Math.cpp"
 #include "File.cpp"
-#include "Utility.cpp"
 #include "ImGUIImpl.cpp"
 
 static uint16 windowWidth  = 960;   //@Note: These dont update. The mark the start size

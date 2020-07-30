@@ -3,6 +3,8 @@
 #include <string.h>
 #include <fstream>
 
+const uint32 PATH_SIZE_LIMIT = 512;
+
 struct FileInfo {
   char* memory;
   uint32 size;
@@ -12,14 +14,15 @@ struct Bitmap {
   uint16 width;
   uint16 height;
   char* memory;
+  const char* path;
 };
 
 struct ModelInfo {
-  float32* vertices = nullptr;
   uint32 vSize;
   uint32 stride;
-  uint16* indices = nullptr;
   uint32 iSize;
+  float32* vertices = nullptr;
+  uint16* indices = nullptr;
 }; 
 
 #pragma pack(push, 1)
@@ -74,6 +77,7 @@ Bitmap load_bitmap(const char* path) {
   bmp.width = (uint16)header->width;
   bmp.height = (uint16)header->height;
   bmp.memory = info.memory + header->offset;
+  bmp.path = path;
   return bmp;
 }
 
@@ -85,12 +89,15 @@ ModelInfo load_obj(const char* path) {
 
   char* pLine;
   char line[256]; 
-  uint32 offset = 0;
+  uint32 vOffset = 0;
+  uint32 vnOffset = 0;
+  uint32 vtOffset = 0;
   uint32 indexCount = 0;
   uint32 length = 0;
   
-  float32 vertices[160000] = {};
-  uint16 indices[160000] = {};
+  float32 vertices[192];
+  uint16 indices[50000];
+  const uint16 stride = 8;
 
   while((pLine = fgets(line, sizeof(line), file))) {
     if(line[0] == 'v' && line[1] == ' ') {
@@ -99,10 +106,32 @@ ModelInfo load_obj(const char* path) {
       while((num = strtok(pLine, " "))) {
 	pLine = nullptr; 
 	if(!strcmp(num, "v")) continue;
-	vertices[offset + field] = atof(num);
+	vertices[vOffset + field] = atof(num);
 	field++;
       }
-      offset += 5;
+      vOffset += stride;
+    }
+    if(line[0] == 'v' && line[1] == 'n') {
+      char* num;
+      uint32 field = 3;
+      while((num = strtok(pLine, " "))) {
+	pLine = nullptr; 
+	if(!strcmp(num, "vn")) continue;
+	vertices[vnOffset + field] = atof(num);
+	field++;
+      }
+      vnOffset += stride;
+    }
+    if(line[0] == 'v' && line[1] == 't') {
+      char* num;
+      uint32 field = 6;
+      while((num = strtok(pLine, " "))) {
+	pLine = nullptr; 
+	if(!strcmp(num, "vt")) continue;
+	vertices[vtOffset + field] = atof(num);
+	field++;
+      }
+      vtOffset += stride;
     }
     if(line[0] == 'f' && line[1] == ' ') {
       char* num;
@@ -116,9 +145,9 @@ ModelInfo load_obj(const char* path) {
       }
       index = 0;
       while(index < 3) {
-	char* ptr = strchr(buf[index], '/');
-	if(ptr) *ptr = '\0';
-	indices[indexCount] = atoi(buf[index]);
+	strchr(buf[index], '/');
+	//if(ptr) *ptr = '\0';
+	indices[indexCount] = (uint16)atoi(buf[index]);
 	indexCount++;
 	index++;
       }
@@ -127,25 +156,22 @@ ModelInfo load_obj(const char* path) {
   }
   fclose(file);
 
+  for(int32 i = 0; i < indexCount; i += 6) {
+    log_("%d, %d, %d,    %d, %d, %d\n", 
+	 indices[i + 0],
+	 indices[i + 1],
+	 indices[i + 2],
+	 indices[i + 3],
+	 indices[i + 4],
+	 indices[i + 5]
+	 );
+  }
+
   ModelInfo info = {};
-  info.vertices = &vertices[0];
-  info.vSize = offset * sizeof(float32);
-  info.stride = 5 * sizeof(float32);
-  info.indices = &indices[0];
+  info.vertices = vertices;
+  info.stride = stride * sizeof(float32);
+  info.vSize = vOffset * sizeof(float32);
+  info.indices = indices;
   info.iSize = indexCount * sizeof(uint16);
   return info;
-}
-
-void save_level(void* contents, uint32 contentByteSize, const char* path) {
-  char fPath[512];
-  full_path(fPath, path);
-
-  log_("%s\n", fPath);
-
-  std::ofstream file(fPath, std::ios::out | std::ios::binary);
-  assert_(file, "Cannot open file %s\n", fPath); 
-  file.write((char*)contents, contentByteSize);
-  file.close();
-  
-  assert_(file.good(), "Couldn't write to file %s\n", fPath);
 }

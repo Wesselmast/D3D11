@@ -14,6 +14,7 @@ struct RenderInfo {
 };
 
 const uint32 RENDER_OBJECT_LIMIT = 1000;
+const uint32 OBJECT_NAME_LIMIT = 256;
 
 struct LightBuffer {
   alignas(16) Vec3 position = { 0.0f, 0.0f, 0.0f };
@@ -39,6 +40,7 @@ struct ObjectDescriptor {
   String name = "Default";
   Transform transform;
   Material material;
+  ModelInfo modelInfo;
   Texture texture;
 };
 
@@ -325,6 +327,8 @@ void set_object_material(RenderObjects* renderObjects, uint32 index, Material& m
 
 void set_object_descriptor(RenderObjects* renderObjects, uint32 index, ObjectDescriptor* descriptor) {
   assert_(descriptor, "Descriptor is not valid!");
+  renderObjects->descriptors[index].name = descriptor->name;
+  renderObjects->descriptors[index].modelInfo = descriptor->modelInfo;
   set_object_material(renderObjects, index, descriptor->material);
   set_object_texture(renderObjects, index, descriptor->texture);
   set_object_transform(renderObjects, index, descriptor->transform);
@@ -385,7 +389,13 @@ void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const
     ID3D11Buffer* materialBuffer = renderObjects->materialBuffers[i];
     uint32 offset = 0;
 
+    // log_("VB:  %d\n", (int32)sizeof(*(vertexBuffer)));
+    // log_("iVB: %d\n", (int32)sizeof(ID3D11Buffer));
+
     context->IASetVertexBuffers(0, 1, &vertexBuffer, &vertexBufferStride, &offset);
+
+    //here was the last mistake. Seems like vertexBuffer load data is corrupted
+    
     context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
     if(resourceView) {
@@ -441,13 +451,13 @@ void destroy_object(RenderObjects* renderObjects, int32 index) {     //maybe do 
   renderObjects->descriptors[index] = {};
 }
 
-uint32 create_object(RenderObjects* renderObjects, ModelInfo* info) {
+uint32 create_object(RenderObjects* renderObjects, ObjectDescriptor* desc) {
   ID3D11Device* device = renderInfo.device;
-  float32* vertices = info->vertices;
-  uint32 vSize = info->vSize;
-  uint32 stride = info->stride;
-  uint16* indices = info->indices;
-  uint32 iSize = info->iSize;
+  float32* vertices = desc->modelInfo.vertices;
+  uint32 vSize = desc->modelInfo.vSize;
+  uint32 stride = desc->modelInfo.stride;
+  uint16* indices = desc->modelInfo.indices;
+  uint32 iSize = desc->modelInfo.iSize;
 
   uint32 index = 0;
   while(is_object_valid(renderObjects, index)) {
@@ -507,14 +517,7 @@ uint32 create_object(RenderObjects* renderObjects, ModelInfo* info) {
   d3d_assert(device->CreateInputLayout(inputElementDesc, inputCount, vBlob->GetBufferPointer(), vBlob->GetBufferSize(), &inputLayout));
   renderObjects->inputLayouts[index] = inputLayout;
 
-  ObjectDescriptor desc = {};
-  desc.name = "Default";
-  desc.transform.position = vec3_from_scalar(0.0f);
-  desc.transform.rotation = vec3_from_scalar(0.0f);
-  desc.transform.scale    = vec3_from_scalar(1.0f);
-  desc.texture = standardTexture;
-
-  set_object_descriptor(renderObjects, index, &desc); 
+  set_object_descriptor(renderObjects, index, desc); 
 
   vBlob->Release();
   fBlob->Release();
@@ -571,14 +574,14 @@ uint32 create_cube(RenderObjects* renderObjects) {
      20, 23, 21, 20, 22, 23
   };
 
-  ModelInfo info = {};
-  info.vertices = &vertices[0];
-  info.stride = sizeof(float32) * 8;
-  info.vSize = sizeof(vertices);
-  info.indices = &indices[0];
-  info.iSize = sizeof(indices);
-  
-  return create_object(renderObjects, &info);
+  ObjectDescriptor desc = {};
+  desc.texture = standardTexture;
+  desc.modelInfo.vertices = vertices;
+  desc.modelInfo.stride = sizeof(float32) * 8;
+  desc.modelInfo.vSize = sizeof(vertices);
+  desc.modelInfo.indices = indices;
+  desc.modelInfo.iSize = sizeof(indices);
+  return create_object(renderObjects, &desc);
 }
 
 uint32 create_plane(RenderObjects* renderObjects) {
@@ -593,18 +596,21 @@ uint32 create_plane(RenderObjects* renderObjects) {
      1, 2, 0,  1, 3, 2
   };
 
-  ModelInfo info = {};
-  info.vertices = &vertices[0];
-  info.stride = sizeof(float32) * 8;
-  info.vSize = sizeof(vertices);
-  info.indices = &indices[0];
-  info.iSize = sizeof(indices);
-
-  return create_object(renderObjects, &info);
+  ObjectDescriptor desc = {};
+  desc.texture = standardTexture;
+  desc.modelInfo.vertices = &vertices[0];
+  desc.modelInfo.stride = sizeof(float32) * 8;
+  desc.modelInfo.vSize = sizeof(vertices);
+  desc.modelInfo.indices = &indices[0];
+  desc.modelInfo.iSize = sizeof(indices);
+  return create_object(renderObjects, &desc);
 }
 
-uint32 create_model(RenderObjects* renderObjects, ModelInfo info) {
-  return create_object(renderObjects, &info);
+uint32 create_model(RenderObjects* renderObjects, ModelInfo& info) {
+  ObjectDescriptor desc = {};
+  desc.texture = standardTexture;
+  desc.modelInfo = info;
+  return create_object(renderObjects, &desc);
 }
 
 void refresh_viewport(int32 x, int32 y, uint32 w, uint32 h) {
@@ -633,4 +639,99 @@ void clear_buffer(float32 r, float32 g, float32 b, float32 a) {
   float32 color[] = { r, g , b, a };
   context->ClearRenderTargetView(target, color);
   context->ClearDepthStencilView(dsv, D3D11_CLEAR_DEPTH, 1.0f, 0);
+}
+
+void save_level(RenderObjects* renderObjects, const char* path) {
+  char fPath[512];
+  full_path(fPath, path);
+
+  log_("%s\n", fPath);
+
+  std::ofstream file(fPath, std::ios::out | std::ios::binary);
+  assert_(file, "Cannot open file %s\n", fPath); 
+
+  // String name = "Default";
+  // Transform transform;
+  // Material material;
+  // ModelInfo modelInfo;
+  // Texture texture;
+
+  file.write(((char*)&(renderObjects->count)), sizeof(uint32));
+  for(uint32 i = 0; i < renderObjects->count; i++) {
+    if(!is_object_valid(renderObjects, i)) continue; 
+    ObjectDescriptor& descRef = renderObjects->descriptors[i];
+    uint32 nameLen = strlen(descRef.name.str);
+    file.write((char*)&nameLen,                sizeof(uint32));
+    file.write(((char*)&(descRef.name)),      nameLen);
+    file.write(((char*)&(descRef.transform)), sizeof(Transform));
+    file.write(((char*)&(descRef.material)),  sizeof(Material));
+    
+    ModelInfo& miRef = descRef.modelInfo;
+    
+    file.write(((char*)&(miRef.vSize)),     sizeof(uint32));
+    file.write(((char*)&(miRef.stride)),    sizeof(uint32));
+    file.write(((char*)&(miRef.iSize)),     sizeof(uint32));
+
+    // this currently doesn't work. The pointers point to nothing
+
+    file.write(((char*)(miRef.vertices)),  miRef.vSize);
+    file.write(((char*)(miRef.indices)),   miRef.iSize);
+
+
+    uint32 pathLen = strlen(descRef.texture.bitmap.path);
+    file.write((char*)&pathLen, sizeof(uint32));
+    file.write(((char*)(descRef.texture.bitmap.path)), pathLen);
+  }
+  
+  file.close();
+  assert_(file.good(), "Couldn't write to file %s\n", fPath);
+}
+
+void load_level(RenderObjects* renderObjects, const char* path) {
+  char fPath[512];
+  full_path(fPath, path);
+
+  std::ifstream file(fPath, std::ios::binary);
+  assert_(file, "Cannot open file %s\n", fPath); 
+
+  for(uint32 i = 0; i < renderObjects->count; i++) {
+    if(!is_object_valid(renderObjects, i)) continue; 
+    destroy_object(renderObjects, i);
+  }
+
+  uint32 count;
+  file.read((char*)&count, sizeof(uint32));
+  for(uint32 i = 0; i < count; i++) {
+    ObjectDescriptor desc;
+    
+    uint32 nameLen;
+    file.read((char*)&nameLen,            sizeof(uint32));
+    file.read(((char*)&(desc.name)),       nameLen);
+    file.read(((char*)&(desc.transform)), sizeof(Transform));
+    file.read(((char*)&(desc.material)),  sizeof(Material));
+    
+    file.read(((char*)&(desc.modelInfo.vSize)),     sizeof(uint32));
+    file.read(((char*)&(desc.modelInfo.stride)),    sizeof(uint32));
+    file.read(((char*)&(desc.modelInfo.iSize)),     sizeof(uint32));
+
+    float32 verBuf[desc.modelInfo.vSize];
+    file.read(((char*)&verBuf), desc.modelInfo.vSize);
+    desc.modelInfo.vertices = verBuf;
+
+    uint16 inBuf[desc.modelInfo.iSize];
+    file.read(((char*)&inBuf), desc.modelInfo.iSize);
+    desc.modelInfo.indices = inBuf;
+    log_("%d\n", desc.modelInfo.indices[7]);
+
+    uint32 pathLen;
+    file.read((char*)&pathLen, sizeof(uint32));
+    char* pathBuffer = nullptr;
+    file.read(pathBuffer, pathLen);
+    desc.texture = make_texture(load_bitmap(pathBuffer));
+    
+    create_object(renderObjects, &desc);
+  }
+
+  file.close();
+  assert_(file.good(), "Couldn't read from file %s\n", fPath);
 }
