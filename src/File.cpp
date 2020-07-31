@@ -14,7 +14,7 @@ struct Bitmap {
   uint16 width;
   uint16 height;
   char* memory;
-  const char* path;
+  char path[PATH_SIZE_LIMIT];
 };
 
 struct ModelInfo {
@@ -23,6 +23,7 @@ struct ModelInfo {
   uint32 iSize;
   float32* vertices = nullptr;
   uint16* indices = nullptr;
+  char path[PATH_SIZE_LIMIT];
 }; 
 
 #pragma pack(push, 1)
@@ -77,7 +78,7 @@ Bitmap load_bitmap(const char* path) {
   bmp.width = (uint16)header->width;
   bmp.height = (uint16)header->height;
   bmp.memory = info.memory + header->offset;
-  bmp.path = path;
+  strcpy(bmp.path, path);
   return bmp;
 }
 
@@ -87,91 +88,63 @@ ModelInfo load_obj(const char* path) {
   FILE* file = fopen(fPath, "r");
   assert_(file, "Trying to load a file that doesn't exist!");
 
-  char* pLine;
-  char line[256]; 
   uint32 vOffset = 0;
-  uint32 vnOffset = 0;
-  uint32 vtOffset = 0;
-  uint32 indexCount = 0;
-  uint32 length = 0;
+  uint32 vnOffset = 3;
+  uint32 vtOffset = 6;
+  uint32 indexOffset = 0;
   
-  float32 vertices[192];
-  uint16 indices[50000];
+  float32 vertices[16000];
+  uint16 indices[16000];
   const uint16 stride = 8;
 
-  while((pLine = fgets(line, sizeof(line), file))) {
-    if(line[0] == 'v' && line[1] == ' ') {
-      char* num;
-      uint32 field = 0;
-      while((num = strtok(pLine, " "))) {
-	pLine = nullptr; 
-	if(!strcmp(num, "v")) continue;
-	vertices[vOffset + field] = atof(num);
-	field++;
-      }
+  while(1) {
+    char line[256];
+    int result = fscanf(file, "%s", line);
+    if(result == EOF) {
+      break;
+    }
+    
+    if(!strcmp(line, "v")) {
+      fscanf(file, "%f %f %f\n", 
+	     &(vertices[vOffset + 0]),
+	     &(vertices[vOffset + 1]),
+	     &(vertices[vOffset + 2]));
       vOffset += stride;
     }
-    if(line[0] == 'v' && line[1] == 'n') {
-      char* num;
-      uint32 field = 3;
-      while((num = strtok(pLine, " "))) {
-	pLine = nullptr; 
-	if(!strcmp(num, "vn")) continue;
-	vertices[vnOffset + field] = atof(num);
-	field++;
-      }
+    else if(!strcmp(line, "vn")) {
+      fscanf(file, "%f %f %f\n", 
+	     &(vertices[vnOffset + 0]),
+	     &(vertices[vnOffset + 1]),
+	     &(vertices[vnOffset + 2]));
       vnOffset += stride;
     }
-    if(line[0] == 'v' && line[1] == 't') {
-      char* num;
-      uint32 field = 6;
-      while((num = strtok(pLine, " "))) {
-	pLine = nullptr; 
-	if(!strcmp(num, "vt")) continue;
-	vertices[vtOffset + field] = atof(num);
-	field++;
-      }
+    else if(!strcmp(line, "vt")) {
+      fscanf(file, "%f %f\n", 
+	     &(vertices[vtOffset + 0]),
+	     &(vertices[vtOffset + 1]));
       vtOffset += stride;
     }
-    if(line[0] == 'f' && line[1] == ' ') {
-      char* num;
-      char* buf[3];
-      uint8 index = 0;
-      while((num = strtok(pLine, " "))) {
-	pLine = nullptr; 
-	if(!strcmp(num, "f")) continue;
-	buf[index] = num;
-	index++;
-      }
-      index = 0;
-      while(index < 3) {
-	strchr(buf[index], '/');
-	//if(ptr) *ptr = '\0';
-	indices[indexCount] = (uint16)atoi(buf[index]);
-	indexCount++;
-	index++;
-      }
+    else if(!strcmp(line, "f")) {
+      int32 temp_indices[3];
+      fscanf(file, "%hu %hu %hu\n", 
+	     &(indices[indexOffset + 0]),
+	     &(indices[indexOffset + 1]),
+	     &(indices[indexOffset + 2]));
+      indices[indexOffset + 0]--;
+      indices[indexOffset + 1]--;
+      indices[indexOffset + 2]--;
+      indexOffset += 3;
     }
-    length++;
   }
-  fclose(file);
 
-  for(int32 i = 0; i < indexCount; i += 6) {
-    log_("%d, %d, %d,    %d, %d, %d\n", 
-	 indices[i + 0],
-	 indices[i + 1],
-	 indices[i + 2],
-	 indices[i + 3],
-	 indices[i + 4],
-	 indices[i + 5]
-	 );
-  }
+  fclose(file);
 
   ModelInfo info = {};
   info.vertices = vertices;
   info.stride = stride * sizeof(float32);
   info.vSize = vOffset * sizeof(float32);
   info.indices = indices;
-  info.iSize = indexCount * sizeof(uint16);
+  info.iSize = indexOffset * sizeof(uint16);
+  strcpy(info.path, path);
   return info;
 }

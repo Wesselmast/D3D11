@@ -37,7 +37,7 @@ struct Texture {
 };
 
 struct ObjectDescriptor {
-  String name = "Default";
+  char name[OBJECT_NAME_LIMIT];// = "Default";
   Transform transform;
   Material material;
   ModelInfo modelInfo;
@@ -327,7 +327,7 @@ void set_object_material(RenderObjects* renderObjects, uint32 index, Material& m
 
 void set_object_descriptor(RenderObjects* renderObjects, uint32 index, ObjectDescriptor* descriptor) {
   assert_(descriptor, "Descriptor is not valid!");
-  renderObjects->descriptors[index].name = descriptor->name;
+  strcpy(renderObjects->descriptors[index].name, descriptor->name);
   renderObjects->descriptors[index].modelInfo = descriptor->modelInfo;
   set_object_material(renderObjects, index, descriptor->material);
   set_object_texture(renderObjects, index, descriptor->texture);
@@ -389,13 +389,7 @@ void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const
     ID3D11Buffer* materialBuffer = renderObjects->materialBuffers[i];
     uint32 offset = 0;
 
-    // log_("VB:  %d\n", (int32)sizeof(*(vertexBuffer)));
-    // log_("iVB: %d\n", (int32)sizeof(ID3D11Buffer));
-
     context->IASetVertexBuffers(0, 1, &vertexBuffer, &vertexBufferStride, &offset);
-
-    //here was the last mistake. Seems like vertexBuffer load data is corrupted
-    
     context->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R16_UINT, 0);
 
     if(resourceView) {
@@ -463,6 +457,8 @@ uint32 create_object(RenderObjects* renderObjects, ObjectDescriptor* desc) {
   while(is_object_valid(renderObjects, index)) {
     index++;
   }
+
+  log_("MA INDEKS %d\n", index);
 
   assert_(index < RENDER_OBJECT_LIMIT, "Cannot create more than %d objects!", RENDER_OBJECT_LIMIT);
 
@@ -581,6 +577,7 @@ uint32 create_cube(RenderObjects* renderObjects) {
   desc.modelInfo.vSize = sizeof(vertices);
   desc.modelInfo.indices = indices;
   desc.modelInfo.iSize = sizeof(indices);
+  strcpy(desc.name, "Cube");
   return create_object(renderObjects, &desc);
 }
 
@@ -603,6 +600,7 @@ uint32 create_plane(RenderObjects* renderObjects) {
   desc.modelInfo.vSize = sizeof(vertices);
   desc.modelInfo.indices = &indices[0];
   desc.modelInfo.iSize = sizeof(indices);
+  strcpy(desc.name, "Plane");
   return create_object(renderObjects, &desc);
 }
 
@@ -610,6 +608,7 @@ uint32 create_model(RenderObjects* renderObjects, ModelInfo& info) {
   ObjectDescriptor desc = {};
   desc.texture = standardTexture;
   desc.modelInfo = info;
+  strcpy(desc.name, "Default");
   return create_object(renderObjects, &desc);
 }
 
@@ -645,42 +644,29 @@ void save_level(RenderObjects* renderObjects, const char* path) {
   char fPath[512];
   full_path(fPath, path);
 
-  log_("%s\n", fPath);
-
-  std::ofstream file(fPath, std::ios::out | std::ios::binary);
+  std::ofstream file(fPath, std::ios::out | std::ios::binary | std::ios::trunc);
   assert_(file, "Cannot open file %s\n", fPath); 
-
-  // String name = "Default";
-  // Transform transform;
-  // Material material;
-  // ModelInfo modelInfo;
-  // Texture texture;
 
   file.write(((char*)&(renderObjects->count)), sizeof(uint32));
   for(uint32 i = 0; i < renderObjects->count; i++) {
     if(!is_object_valid(renderObjects, i)) continue; 
+
     ObjectDescriptor& descRef = renderObjects->descriptors[i];
-    uint32 nameLen = strlen(descRef.name.str);
-    file.write((char*)&nameLen,                sizeof(uint32));
+
+    uint32 nameLen = strlen(descRef.name) + 1;
+    file.write((char*)&nameLen,               sizeof(uint32));
     file.write(((char*)&(descRef.name)),      nameLen);
+    log_("%s\n", descRef.name);
     file.write(((char*)&(descRef.transform)), sizeof(Transform));
     file.write(((char*)&(descRef.material)),  sizeof(Material));
-    
-    ModelInfo& miRef = descRef.modelInfo;
-    
-    file.write(((char*)&(miRef.vSize)),     sizeof(uint32));
-    file.write(((char*)&(miRef.stride)),    sizeof(uint32));
-    file.write(((char*)&(miRef.iSize)),     sizeof(uint32));
 
-    // this currently doesn't work. The pointers point to nothing
+    uint32 mPathLen = strlen(descRef.modelInfo.path) + 1;
+    file.write(((char*)&mPathLen), sizeof(uint32));
+    file.write(((char*)(descRef.modelInfo.path)), mPathLen);
 
-    file.write(((char*)(miRef.vertices)),  miRef.vSize);
-    file.write(((char*)(miRef.indices)),   miRef.iSize);
-
-
-    uint32 pathLen = strlen(descRef.texture.bitmap.path);
-    file.write((char*)&pathLen, sizeof(uint32));
-    file.write(((char*)(descRef.texture.bitmap.path)), pathLen);
+    uint32 tPathLen = strlen(descRef.texture.bitmap.path) + 1;
+    file.write((char*)&tPathLen, sizeof(uint32));
+    file.write(((char*)(descRef.texture.bitmap.path)), tPathLen);
   }
   
   file.close();
@@ -701,37 +687,31 @@ void load_level(RenderObjects* renderObjects, const char* path) {
 
   uint32 count;
   file.read((char*)&count, sizeof(uint32));
+  renderObjects->count = 0;
+
+  ObjectDescriptor desc = {};
   for(uint32 i = 0; i < count; i++) {
-    ObjectDescriptor desc;
-    
     uint32 nameLen;
-    file.read((char*)&nameLen,            sizeof(uint32));
-    file.read(((char*)&(desc.name)),       nameLen);
+    file.read((char*)&nameLen, sizeof(uint32));
+    file.read(&(desc.name)[0], nameLen);
+
     file.read(((char*)&(desc.transform)), sizeof(Transform));
     file.read(((char*)&(desc.material)),  sizeof(Material));
-    
-    file.read(((char*)&(desc.modelInfo.vSize)),     sizeof(uint32));
-    file.read(((char*)&(desc.modelInfo.stride)),    sizeof(uint32));
-    file.read(((char*)&(desc.modelInfo.iSize)),     sizeof(uint32));
+     
+    uint32 mPathLen;
+    file.read((char*)&mPathLen, sizeof(uint32));
+    char mPathBuf[PATH_SIZE_LIMIT];
+    file.read(&mPathBuf[0], mPathLen);
+    desc.modelInfo = load_obj(mPathBuf);
 
-    float32 verBuf[desc.modelInfo.vSize];
-    file.read(((char*)&verBuf), desc.modelInfo.vSize);
-    desc.modelInfo.vertices = verBuf;
+    uint32 tPathLen;
+    file.read((char*)&tPathLen, sizeof(uint32));
+    char tPathBuf[PATH_SIZE_LIMIT];
+    file.read(&tPathBuf[0], tPathLen);
+    desc.texture = make_texture(load_bitmap(tPathBuf));
 
-    uint16 inBuf[desc.modelInfo.iSize];
-    file.read(((char*)&inBuf), desc.modelInfo.iSize);
-    desc.modelInfo.indices = inBuf;
-    log_("%d\n", desc.modelInfo.indices[7]);
-
-    uint32 pathLen;
-    file.read((char*)&pathLen, sizeof(uint32));
-    char* pathBuffer = nullptr;
-    file.read(pathBuffer, pathLen);
-    desc.texture = make_texture(load_bitmap(pathBuffer));
-    
     create_object(renderObjects, &desc);
   }
-
   file.close();
   assert_(file.good(), "Couldn't read from file %s\n", fPath);
 }
