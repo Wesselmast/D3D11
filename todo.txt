@@ -1,7 +1,10 @@
 TODO:
 - Shadows
-- Better model loading (maybe I should resolve to a library for this.. assimp pretty gud)
+- Better model loading
 - Fullscreen support
 - Networking (Nonblocking sockets)
 - Demo level should be there as soon as possible!
 - Fix up viewports : ~
+- Level editor should be much better. There is a bug with the selection system
+- Selecting objects should be done on the mouse pointer, not the middle of the screen
+- Add world to screen coordinates and vice versa
