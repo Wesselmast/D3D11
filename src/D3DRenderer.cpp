@@ -360,7 +360,7 @@ bool is_object_valid(RenderObjects* renderObjects, uint32 index) {
   return renderObjects->vertexBuffers[index];
 }
 
-void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const Vec3& DEBUGVec) {
+void render_loop(const Mat4& viewProjection, const Vec3& DEBUGVec) {
   ID3D11DeviceContext* context = renderInfo.context;
 
   update_render_targets();
@@ -372,6 +372,10 @@ void render_loop(RenderObjects* renderObjects, const Mat4& viewProjection, const
   create_constant_buffer(&lightBuffer, &light, sizeof(LightBuffer));
   context->PSSetConstantBuffers(0, 1, &lightBuffer);
   lightBuffer->Release();
+}
+
+void update_render_objects(RenderObjects* renderObjects) {
+  ID3D11DeviceContext* context = renderInfo.context;
  
   for(uint32 i = 0; i < renderObjects->count; i++) {
     if(!is_object_valid(renderObjects, i)) continue;
