@@ -305,7 +305,6 @@ void set_object_transform(RenderObjects* renderObjects, uint32 index, const Tran
       mat4_scaling(transform.scale) *
       mat4_euler_rotation(transform.rotation) *
       mat4_translation(transform.position));    
-
   ID3D11Buffer* transformBuffer;
   create_constant_buffer(&transformBuffer, &mat, sizeof(Mat4));
   if(renderObjects->transformBuffers[index]) (renderObjects->transformBuffers[index])->Release();
@@ -462,8 +461,6 @@ uint32 create_object(RenderObjects* renderObjects, ObjectDescriptor* desc) {
     index++;
   }
 
-  log_("MA INDEKS %d\n", index);
-
   assert_(index < RENDER_OBJECT_LIMIT, "Cannot create more than %d objects!", RENDER_OBJECT_LIMIT);
 
   ID3D11Buffer* vertexBuffer;
@@ -526,94 +523,102 @@ uint32 create_object(RenderObjects* renderObjects, ObjectDescriptor* desc) {
   return index;
 }
 
-uint32 create_cube(RenderObjects* renderObjects) {
-  float32 vertices[] = {
-    //near
-    -1.0f, -1.0f, -1.0f,   0.0f,  0.0f, -1.0f,   0.0f,  0.0f,
-     1.0f, -1.0f, -1.0f,   0.0f,  0.0f, -1.0f,   1.0f,  0.0f,
-    -1.0f,  1.0f, -1.0f,   0.0f,  0.0f, -1.0f,   0.0f,  1.0f,
-     1.0f,  1.0f, -1.0f,   0.0f,  0.0f, -1.0f,   1.0f,  1.0f,
-     
-    //far
-    -1.0f, -1.0f,  1.0f,   0.0f,  0.0f,  1.0f,   0.0f,  0.0f,
-     1.0f, -1.0f,  1.0f,   0.0f,  0.0f,  1.0f,   1.0f,  0.0f,
-    -1.0f,  1.0f,  1.0f,   0.0f,  0.0f,  1.0f,   0.0f,  1.0f,
-     1.0f,  1.0f,  1.0f,   0.0f,  0.0f,  1.0f,   1.0f,  1.0f,
- 
-    //left
-    -1.0f, -1.0f, -1.0f,  -1.0f,  0.0f,  0.0f,   0.0f,  0.0f,
-    -1.0f,  1.0f, -1.0f,  -1.0f,  0.0f,  0.0f,   1.0f,  0.0f,
-    -1.0f, -1.0f,  1.0f,  -1.0f,  0.0f,  0.0f,   0.0f,  1.0f,
-    -1.0f,  1.0f,  1.0f,  -1.0f,  0.0f,  0.0f,   1.0f,  1.0f,
-
-    //right
-     1.0f, -1.0f, -1.0f,   1.0f,  0.0f,  0.0f,   0.0f,  0.0f,
-     1.0f,  1.0f, -1.0f,   1.0f,  0.0f,  0.0f,   1.0f,  0.0f,
-     1.0f, -1.0f,  1.0f,   1.0f,  0.0f,  0.0f,   0.0f,  1.0f,
-     1.0f,  1.0f,  1.0f,   1.0f,  0.0f,  0.0f,   1.0f,  1.0f,
-
-    //bottom
-    -1.0f, -1.0f, -1.0f,   0.0f, -1.0f,  0.0f,   0.0f,  0.0f,
-     1.0f, -1.0f, -1.0f,   0.0f, -1.0f,  0.0f,   1.0f,  0.0f,
-    -1.0f, -1.0f,  1.0f,   0.0f, -1.0f,  0.0f,   0.0f,  1.0f,
-     1.0f, -1.0f,  1.0f,   0.0f, -1.0f,  0.0f,   1.0f,  1.0f,
-
-    //top
-    -1.0f,  1.0f, -1.0f,   0.0f,  1.0f,  0.0f,   0.0f,  0.0f,
-     1.0f,  1.0f, -1.0f,   0.0f,  1.0f,  0.0f,   1.0f,  0.0f,
-    -1.0f,  1.0f,  1.0f,   0.0f,  1.0f,  0.0f,   0.0f,  1.0f,
-     1.0f,  1.0f,  1.0f,   0.0f,  1.0f,  0.0f,   1.0f,  1.0f,
-  };  
-
-  uint16 indices[] = {
-     0,  2,  1,  2,  3,  1,
-     4,  5,  7,  4,  7,  6,
-     8,  10, 9,  10, 11, 9,
-     12, 13, 15, 12, 15, 14,
-     16, 17, 18, 18, 17, 19,
-     20, 23, 21, 20, 22, 23
-  };
-
-  ObjectDescriptor desc = {};
-  desc.texture = standardTexture;
-  desc.modelInfo.vertices = vertices;
-  desc.modelInfo.stride = sizeof(float32) * 8;
-  desc.modelInfo.vSize = sizeof(vertices);
-  desc.modelInfo.indices = indices;
-  desc.modelInfo.iSize = sizeof(indices);
-  strcpy(desc.name, "Cube");
-  return create_object(renderObjects, &desc);
-}
-
-uint32 create_plane(RenderObjects* renderObjects) {
-  float32 vertices[] = {
-    -1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,
-     1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,  1.0f,  0.0f,
-    -1.0f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,  0.0f,  1.0f,
-     1.0f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,  1.0f,  1.0f,
-  };
-
-  uint16 indices[] = {
-     1, 2, 0,  1, 3, 2
-  };
-
-  ObjectDescriptor desc = {};
-  desc.texture = standardTexture;
-  desc.modelInfo.vertices = &vertices[0];
-  desc.modelInfo.stride = sizeof(float32) * 8;
-  desc.modelInfo.vSize = sizeof(vertices);
-  desc.modelInfo.indices = &indices[0];
-  desc.modelInfo.iSize = sizeof(indices);
-  strcpy(desc.name, "Plane");
-  return create_object(renderObjects, &desc);
-}
-
 uint32 create_model(RenderObjects* renderObjects, ModelInfo& info) {
   ObjectDescriptor desc = {};
   desc.texture = standardTexture;
   desc.modelInfo = info;
   strcpy(desc.name, "Default");
   return create_object(renderObjects, &desc);
+}
+
+uint32 create_cube(RenderObjects* renderObjects) {
+  // float32 vertices[] = {
+  //   //near
+  //   -1.0f, -1.0f, -1.0f,   0.0f,  0.0f, -1.0f,   0.0f,  0.0f,
+  //    1.0f, -1.0f, -1.0f,   0.0f,  0.0f, -1.0f,   1.0f,  0.0f,
+  //   -1.0f,  1.0f, -1.0f,   0.0f,  0.0f, -1.0f,   0.0f,  1.0f,
+  //    1.0f,  1.0f, -1.0f,   0.0f,  0.0f, -1.0f,   1.0f,  1.0f,
+     
+  //   //far
+  //   -1.0f, -1.0f,  1.0f,   0.0f,  0.0f,  1.0f,   0.0f,  0.0f,
+  //    1.0f, -1.0f,  1.0f,   0.0f,  0.0f,  1.0f,   1.0f,  0.0f,
+  //   -1.0f,  1.0f,  1.0f,   0.0f,  0.0f,  1.0f,   0.0f,  1.0f,
+  //    1.0f,  1.0f,  1.0f,   0.0f,  0.0f,  1.0f,   1.0f,  1.0f,
+ 
+  //   //left
+  //   -1.0f, -1.0f, -1.0f,  -1.0f,  0.0f,  0.0f,   0.0f,  0.0f,
+  //   -1.0f,  1.0f, -1.0f,  -1.0f,  0.0f,  0.0f,   1.0f,  0.0f,
+  //   -1.0f, -1.0f,  1.0f,  -1.0f,  0.0f,  0.0f,   0.0f,  1.0f,
+  //   -1.0f,  1.0f,  1.0f,  -1.0f,  0.0f,  0.0f,   1.0f,  1.0f,
+
+  //   //right
+  //    1.0f, -1.0f, -1.0f,   1.0f,  0.0f,  0.0f,   0.0f,  0.0f,
+  //    1.0f,  1.0f, -1.0f,   1.0f,  0.0f,  0.0f,   1.0f,  0.0f,
+  //    1.0f, -1.0f,  1.0f,   1.0f,  0.0f,  0.0f,   0.0f,  1.0f,
+  //    1.0f,  1.0f,  1.0f,   1.0f,  0.0f,  0.0f,   1.0f,  1.0f,
+
+  //   //bottom
+  //   -1.0f, -1.0f, -1.0f,   0.0f, -1.0f,  0.0f,   0.0f,  0.0f,
+  //    1.0f, -1.0f, -1.0f,   0.0f, -1.0f,  0.0f,   1.0f,  0.0f,
+  //   -1.0f, -1.0f,  1.0f,   0.0f, -1.0f,  0.0f,   0.0f,  1.0f,
+  //    1.0f, -1.0f,  1.0f,   0.0f, -1.0f,  0.0f,   1.0f,  1.0f,
+
+  //   //top
+  //   -1.0f,  1.0f, -1.0f,   0.0f,  1.0f,  0.0f,   0.0f,  0.0f,
+  //    1.0f,  1.0f, -1.0f,   0.0f,  1.0f,  0.0f,   1.0f,  0.0f,
+  //   -1.0f,  1.0f,  1.0f,   0.0f,  1.0f,  0.0f,   0.0f,  1.0f,
+  //    1.0f,  1.0f,  1.0f,   0.0f,  1.0f,  0.0f,   1.0f,  1.0f,
+  // };  
+
+  // uint16 indices[] = {
+  //    0,  2,  1,  2,  3,  1,
+  //    4,  5,  7,  4,  7,  6,
+  //    8,  10, 9,  10, 11, 9,
+  //    12, 13, 15, 12, 15, 14,
+  //    16, 17, 18, 18, 17, 19,
+  //    20, 23, 21, 20, 22, 23
+  // };
+
+  // ObjectDescriptor desc = {};
+  // desc.texture = standardTexture;
+  // desc.modelInfo.vertices = vertices;
+  // desc.modelInfo.stride = sizeof(float32) * 8;
+  // desc.modelInfo.vSize = sizeof(vertices);
+  // desc.modelInfo.indices = indices;
+  // desc.modelInfo.iSize = sizeof(indices);
+  // strcpy(desc.name, "Cube");
+  // return create_object(renderObjects, &desc);
+
+
+
+
+  ModelInfo mi = load_obj("res\\models\\Cube.obj");
+  return create_model(renderObjects, mi);
+}
+
+uint32 create_plane(RenderObjects* renderObjects) {
+  // float32 vertices[] = {
+  //   -1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,
+  //    1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,  1.0f,  0.0f,
+  //   -1.0f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,  0.0f,  1.0f,
+  //    1.0f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,  1.0f,  1.0f,
+  // };
+
+  // uint16 indices[] = {
+  //    1, 2, 0,  1, 3, 2
+  // };
+
+  // ObjectDescriptor desc = {};
+  // desc.texture = standardTexture;
+  // desc.modelInfo.vertices = &vertices[0];
+  // desc.modelInfo.stride = sizeof(float32) * 8;
+  // desc.modelInfo.vSize = sizeof(vertices);
+  // desc.modelInfo.indices = &indices[0];
+  // desc.modelInfo.iSize = sizeof(indices);
+  // strcpy(desc.name, "Plane");
+
+  ModelInfo mi = load_obj("res\\models\\Plane.obj");
+  return create_model(renderObjects, mi);
 }
 
 void refresh_viewport(int32 x, int32 y, uint32 w, uint32 h) {

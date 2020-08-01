@@ -56,7 +56,6 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
     ImGui::StyleColorsDark();
     
     ImGui_ImplWin32_Init(hwnd);
@@ -81,11 +80,15 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   case WM_LBUTTONDOWN: {
     SetForegroundWindow(hwnd);
     activeWindow = hwnd;
-    input.fire = true; 
+    if(!imgui_hovering_anything()) {
+      input.fire = true; 
+    }
     return 0;
   }
   case WM_LBUTTONUP: {
-    input.fire = false; 
+    if(!imgui_hovering_anything()) {
+      input.fire = false; 
+    }
     return 0;
   }
 

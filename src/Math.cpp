@@ -47,6 +47,10 @@ float32 pi() {
   return 3.14159265359f;
 }
 
+float32 radians_to_degrees() {
+  return 180.0f / pi();
+}
+
 float32 degrees_to_radians() {
   return pi() / 180.0f;
 }
@@ -64,7 +68,7 @@ Vec3 operator-(const Vec3& a) {
 }
 
 float32 vec3_length_squared(const Vec3& vec) {
-  return (vec.x * vec.x) + (vec.y * vec.y) + (vec.z * vec.z);
+  return abs((vec.x * vec.x) + (vec.y * vec.y) + (vec.z * vec.z));
 }
 
 float32 vec3_length(const Vec3& vec) {
@@ -86,6 +90,14 @@ Vec3 operator*(float32 scalar, const Vec3& vec) {
   result.x = vec.x * scalar;
   result.y = vec.y * scalar;
   result.z = vec.z * scalar;
+  return result;
+}
+
+Vec3 operator/(const Vec3& vec, float32 scalar) {
+  Vec3 result = {};
+  result.x = vec.x / scalar;
+  result.y = vec.y / scalar;
+  result.z = vec.z / scalar;
   return result;
 }
 
@@ -131,6 +143,11 @@ Vec3 vec3_cross(const Vec3& a, const Vec3& b) {
   result.y = a.z * b.x - a.x * b.z;
   result.z = a.x * b.y - a.y * b.x;
   return result;
+}
+
+float32 vec3_dot(const Vec3& a, const Vec3& b) {
+  return a.x * b.x + a.y * b.y + a.z * b.z;
+  
 }
 
 Vec3 vec3_forward(const Vec3& rot) {
