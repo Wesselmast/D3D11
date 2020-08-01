@@ -38,6 +38,23 @@ void pop_error();
 
 void lock_mouse(bool32 confine);
 void full_path(char* buffer, const char* fileName);
+
+#define kilobytes(value) (value * 1024LL) 
+#define megabytes(value) (kilobytes(value) * 1024LL) 
+#define gigabytes(value) (megabytes(value) * 1024LL) 
+
+struct GameMemory {
+  uint8* memory = nullptr;
+  uint64 size = 0;
+  uint64 offset = 0;
+  bool32 isInitialized = false;
+};
+
+uint8* allocate(GameMemory* memory, uint64 size) {
+  uint8* result =  memory->memory + memory->offset;
+  memory->offset += size;
+  return result;
+}
   
 #include "Utility.cpp"
 #include "Math.cpp"

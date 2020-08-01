@@ -67,6 +67,10 @@ Vec3 operator-(const Vec3& a) {
   return result;
 }
 
+bool are_near(float32 f1, float32 f2) {
+  return abs(f1 - f2) < 0.01f;
+}
+
 float32 vec3_length_squared(const Vec3& vec) {
   return abs((vec.x * vec.x) + (vec.y * vec.y) + (vec.z * vec.z));
 }

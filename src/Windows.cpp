@@ -225,8 +225,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
   assert_(checkIfRegistered, "Couldn't register input device");
 
   GameMemory gameMemory = {};
-  gameMemory.size = megabytes(64);
-  gameMemory.memory = VirtualAlloc(0, gameMemory.size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+  gameMemory.size = megabytes(128);
+  gameMemory.memory = (uint8*)VirtualAlloc(0, gameMemory.size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
   
   ShowWindow(window, SW_SHOW);
   UpdateWindow(window);

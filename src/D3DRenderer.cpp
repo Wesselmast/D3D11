@@ -60,7 +60,6 @@ struct RenderObjects {
 };
  
 static RenderInfo renderInfo; // @CleanUp: Maybe have this not be a global variable
-static Texture standardTexture;
 
 #define d3d_assert(condition) \
   if(FAILED(condition)) { \
@@ -153,7 +152,7 @@ void create_texture(ID3D11ShaderResourceView** view, Bitmap* bmp) {
   texture->Release();
 }
 
-Texture make_texture(Bitmap bmp) {
+Texture make_texture(Bitmap& bmp) {
   ID3D11ShaderResourceView* rsv;
   create_texture(&rsv, &bmp);
 
@@ -247,8 +246,6 @@ void init_renderer(HWND window) {
   renderInfo.device = device;
   renderInfo.target = target;
   renderInfo.dsv = dsv;
-
-  standardTexture = make_texture(load_bitmap("res\\textures\\T_CheckerBoard.bmp"));
 }
 
 void create_vertex_buffer(ID3D11Buffer** vertexBuffer, const void* vertices, uint32 size, uint32 stride) {
@@ -525,98 +522,17 @@ uint32 create_object(RenderObjects* renderObjects, ObjectDescriptor* desc) {
 
 uint32 create_model(RenderObjects* renderObjects, ModelInfo& info) {
   ObjectDescriptor desc = {};
-  desc.texture = standardTexture;
   desc.modelInfo = info;
   strcpy(desc.name, "Default");
   return create_object(renderObjects, &desc);
 }
 
 uint32 create_cube(RenderObjects* renderObjects) {
-  // float32 vertices[] = {
-  //   //near
-  //   -1.0f, -1.0f, -1.0f,   0.0f,  0.0f, -1.0f,   0.0f,  0.0f,
-  //    1.0f, -1.0f, -1.0f,   0.0f,  0.0f, -1.0f,   1.0f,  0.0f,
-  //   -1.0f,  1.0f, -1.0f,   0.0f,  0.0f, -1.0f,   0.0f,  1.0f,
-  //    1.0f,  1.0f, -1.0f,   0.0f,  0.0f, -1.0f,   1.0f,  1.0f,
-     
-  //   //far
-  //   -1.0f, -1.0f,  1.0f,   0.0f,  0.0f,  1.0f,   0.0f,  0.0f,
-  //    1.0f, -1.0f,  1.0f,   0.0f,  0.0f,  1.0f,   1.0f,  0.0f,
-  //   -1.0f,  1.0f,  1.0f,   0.0f,  0.0f,  1.0f,   0.0f,  1.0f,
-  //    1.0f,  1.0f,  1.0f,   0.0f,  0.0f,  1.0f,   1.0f,  1.0f,
- 
-  //   //left
-  //   -1.0f, -1.0f, -1.0f,  -1.0f,  0.0f,  0.0f,   0.0f,  0.0f,
-  //   -1.0f,  1.0f, -1.0f,  -1.0f,  0.0f,  0.0f,   1.0f,  0.0f,
-  //   -1.0f, -1.0f,  1.0f,  -1.0f,  0.0f,  0.0f,   0.0f,  1.0f,
-  //   -1.0f,  1.0f,  1.0f,  -1.0f,  0.0f,  0.0f,   1.0f,  1.0f,
-
-  //   //right
-  //    1.0f, -1.0f, -1.0f,   1.0f,  0.0f,  0.0f,   0.0f,  0.0f,
-  //    1.0f,  1.0f, -1.0f,   1.0f,  0.0f,  0.0f,   1.0f,  0.0f,
-  //    1.0f, -1.0f,  1.0f,   1.0f,  0.0f,  0.0f,   0.0f,  1.0f,
-  //    1.0f,  1.0f,  1.0f,   1.0f,  0.0f,  0.0f,   1.0f,  1.0f,
-
-  //   //bottom
-  //   -1.0f, -1.0f, -1.0f,   0.0f, -1.0f,  0.0f,   0.0f,  0.0f,
-  //    1.0f, -1.0f, -1.0f,   0.0f, -1.0f,  0.0f,   1.0f,  0.0f,
-  //   -1.0f, -1.0f,  1.0f,   0.0f, -1.0f,  0.0f,   0.0f,  1.0f,
-  //    1.0f, -1.0f,  1.0f,   0.0f, -1.0f,  0.0f,   1.0f,  1.0f,
-
-  //   //top
-  //   -1.0f,  1.0f, -1.0f,   0.0f,  1.0f,  0.0f,   0.0f,  0.0f,
-  //    1.0f,  1.0f, -1.0f,   0.0f,  1.0f,  0.0f,   1.0f,  0.0f,
-  //   -1.0f,  1.0f,  1.0f,   0.0f,  1.0f,  0.0f,   0.0f,  1.0f,
-  //    1.0f,  1.0f,  1.0f,   0.0f,  1.0f,  0.0f,   1.0f,  1.0f,
-  // };  
-
-  // uint16 indices[] = {
-  //    0,  2,  1,  2,  3,  1,
-  //    4,  5,  7,  4,  7,  6,
-  //    8,  10, 9,  10, 11, 9,
-  //    12, 13, 15, 12, 15, 14,
-  //    16, 17, 18, 18, 17, 19,
-  //    20, 23, 21, 20, 22, 23
-  // };
-
-  // ObjectDescriptor desc = {};
-  // desc.texture = standardTexture;
-  // desc.modelInfo.vertices = vertices;
-  // desc.modelInfo.stride = sizeof(float32) * 8;
-  // desc.modelInfo.vSize = sizeof(vertices);
-  // desc.modelInfo.indices = indices;
-  // desc.modelInfo.iSize = sizeof(indices);
-  // strcpy(desc.name, "Cube");
-  // return create_object(renderObjects, &desc);
-
-
-
-
   ModelInfo mi = load_obj("res\\models\\Cube.obj");
   return create_model(renderObjects, mi);
 }
 
 uint32 create_plane(RenderObjects* renderObjects) {
-  // float32 vertices[] = {
-  //   -1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,
-  //    1.0f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,  1.0f,  0.0f,
-  //   -1.0f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,  0.0f,  1.0f,
-  //    1.0f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,  1.0f,  1.0f,
-  // };
-
-  // uint16 indices[] = {
-  //    1, 2, 0,  1, 3, 2
-  // };
-
-  // ObjectDescriptor desc = {};
-  // desc.texture = standardTexture;
-  // desc.modelInfo.vertices = &vertices[0];
-  // desc.modelInfo.stride = sizeof(float32) * 8;
-  // desc.modelInfo.vSize = sizeof(vertices);
-  // desc.modelInfo.indices = &indices[0];
-  // desc.modelInfo.iSize = sizeof(indices);
-  // strcpy(desc.name, "Plane");
-
   ModelInfo mi = load_obj("res\\models\\Plane.obj");
   return create_model(renderObjects, mi);
 }
@@ -682,7 +598,7 @@ void save_level(RenderObjects* renderObjects, const char* path) {
   assert_(file.good(), "Couldn't write to file %s\n", fPath);
 }
 
-void load_level(RenderObjects* renderObjects, const char* path) {
+void load_level(GameMemory* memory, RenderObjects* renderObjects, const char* path) {
   char fPath[512];
   full_path(fPath, path);
 
@@ -717,7 +633,10 @@ void load_level(RenderObjects* renderObjects, const char* path) {
     file.read((char*)&tPathLen, sizeof(uint32));
     char tPathBuf[PATH_SIZE_LIMIT];
     file.read(&tPathBuf[0], tPathLen);
-    desc.texture = make_texture(load_bitmap(tPathBuf));
+    
+    Bitmap bmp = {};
+    load_bitmap(memory, tPathBuf, bmp);
+    desc.texture = make_texture(bmp);
 
     create_object(renderObjects, &desc);
   }

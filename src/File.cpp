@@ -6,14 +6,14 @@
 const uint32 PATH_SIZE_LIMIT = 512;
 
 struct FileInfo {
-  char* memory;
+  uint8* memory;
   uint32 size;
 };
 
 struct Bitmap {
   uint16 width;
   uint16 height;
-  char* memory;
+  uint8* memory = nullptr;
   char path[PATH_SIZE_LIMIT];
 };
 
@@ -41,45 +41,41 @@ struct BitmapHeader {
 };
 #pragma pack(pop)
 
-FileInfo load_file(const char* path) {
+void load_file(GameMemory* memory, const char* path, FileInfo& info) {
   char fPath[512];
   full_path(fPath, path);
   FILE* file = fopen(fPath, "rb");
   assert_(file, "Trying to load a file that doesn't exist!");
 
   uint32 size;
-  char* memory;
   fseek(file, 0, SEEK_END);
   size = ftell(file);
   fseek(file, 0, SEEK_SET);
-  memory = (char*)malloc(size + 1);
-  if(size != fread(memory, 1, size, file)) {
-    free(memory);
+
+  uint8* m = allocate(memory, size + 1);
+  if(size != fread(m, 1, size, file)) {
     fclose(file);
     assert_(false, "Filesize is not correct. Something went wrong when reading the file");
-    return { nullptr, 0 };
+    return;
   }
   fclose(file);
-  memory[size] = 0;
 
-  FileInfo fileInfo = {}; 
-  fileInfo.memory = memory;
-  fileInfo.size = size;
-  return fileInfo;
+  m[size] = 0;
+  info.memory = m;
+  info.size = size;
 }
 
-Bitmap load_bitmap(const char* path) {
-  FileInfo info = load_file(path);
+void load_bitmap(GameMemory* memory, const char* path, Bitmap& bmp) {
+  FileInfo info;
+  load_file(memory, path, info);
   assert_(info.size, "Trying to load a bitmap that's of size 0");
 
   BitmapHeader* header = (BitmapHeader*)info.memory;
 
-  Bitmap bmp = {};
   bmp.width = (uint16)header->width;
   bmp.height = (uint16)header->height;
   bmp.memory = info.memory + header->offset;
   strcpy(bmp.path, path);
-  return bmp;
 }
 
 ModelInfo load_obj(const char* path) {
@@ -88,13 +84,18 @@ ModelInfo load_obj(const char* path) {
   FILE* file = fopen(fPath, "r");
   assert_(file, "Trying to load a file that doesn't exist!");
 
-  uint32 vOffset = 0;
-  uint32 vnOffset = 3;
-  uint32 vtOffset = 6;
+  uint32 vpOffset = 0;
+  uint32 vnOffset = 0;
+  uint32 vtOffset = 0;
   uint32 indexOffset = 0;
+  uint32 vertexOffset = 0;
   
-  float32 vertices[16000];
-  uint16 indices[16000];
+  Vec3 vP[10000];
+  Vec3 vN[10000];
+  Vec2 vT[10000];
+  
+  float32 vertices[100000];
+  uint16 indices[100000];
   const uint16 stride = 8;
 
   while(1) {
@@ -103,46 +104,85 @@ ModelInfo load_obj(const char* path) {
     if(result == EOF) {
       break;
     }
-    
+
     if(!strcmp(line, "v")) {
       fscanf(file, "%f %f %f\n", 
-	     &(vertices[vOffset + 0]),
-	     &(vertices[vOffset + 1]),
-	     &(vertices[vOffset + 2]));
-      vOffset += stride;
+	     &(vP[vpOffset].x),
+	     &(vP[vpOffset].y),
+	     &(vP[vpOffset].z));
+      vpOffset++;
     }
     else if(!strcmp(line, "vn")) {
       fscanf(file, "%f %f %f\n", 
-	     &(vertices[vnOffset + 0]),
-	     &(vertices[vnOffset + 1]),
-	     &(vertices[vnOffset + 2]));
-      vnOffset += stride;
+	     &(vN[vnOffset].x),
+	     &(vN[vnOffset].y),
+	     &(vN[vnOffset].z));
+      vnOffset++;
     }
     else if(!strcmp(line, "vt")) {
       fscanf(file, "%f %f\n", 
-	     &(vertices[vtOffset + 0]),
-	     &(vertices[vtOffset + 1]));
-      vtOffset += stride;
+	     &(vT[vtOffset].x),
+	     &(vT[vtOffset].y));
+      vtOffset++;
     }
     else if(!strcmp(line, "f")) {
-      int32 temp_indices[3];
-      fscanf(file, "%hu %hu %hu\n", 
-	     &(indices[indexOffset + 0]),
-	     &(indices[indexOffset + 1]),
-	     &(indices[indexOffset + 2]));
-      indices[indexOffset + 0]--;
-      indices[indexOffset + 1]--;
-      indices[indexOffset + 2]--;
-      indexOffset += 3;
+      uint16 faces[9];
+      int32 matches = fscanf(file, "%hu/%hu/%hu %hu/%hu/%hu %hu/%hu/%hu\n", 
+			     &faces[0], &faces[1], &faces[2],
+			     &faces[3], &faces[4], &faces[5],
+			     &faces[6], &faces[7], &faces[8]);
+      if(matches == 9) {
+	for(int32 i = 0; i < 9; i += 3) {
+	  Vec3 v1p = vP[faces[i + 0] - 1];
+	  Vec2 v1t = vT[faces[i + 1] - 1];
+	  Vec3 v1n = vN[faces[i + 2] - 1];
+	  
+	  bool found = false;
+	  for(int32 j = 0; j < vertexOffset + stride; j += stride) {
+	    if(are_near(v1p.x, vertices[j + 0]) &&
+	       are_near(v1p.y, vertices[j + 1]) &&
+	       are_near(v1p.z, vertices[j + 2]) &&
+	       are_near(v1n.x, vertices[j + 3]) &&
+	       are_near(v1n.y, vertices[j + 4]) &&
+	       are_near(v1n.z, vertices[j + 5]) &&
+	       are_near(v1t.x, vertices[j + 6]) &&
+	       are_near(v1t.y, vertices[j + 7])) {
+	      indices[indexOffset] = j / stride;
+	      found = true;
+	      break;
+	    }
+	  }
+	  if(!found) {
+	    vertices[vertexOffset + 0] = v1p.x;
+	    vertices[vertexOffset + 1] = v1p.y;
+	    vertices[vertexOffset + 2] = v1p.z;
+	    
+	    vertices[vertexOffset + 3] = v1n.x;
+	    vertices[vertexOffset + 4] = v1n.y;
+	    vertices[vertexOffset + 5] = v1n.z;
+	    
+	    vertices[vertexOffset + 6] = v1t.x;
+	    vertices[vertexOffset + 7] = v1t.y;
+	    
+	    vertexOffset += stride;
+	    
+	    indices[indexOffset] = (vertexOffset / 8) - 1;  
+	  }
+	  indexOffset++;
+	}
+      }
+      else {
+	assert_(false, "invalid input! cannot read file\n");
+      }
     }
   }
-
+  
   fclose(file);
 
   ModelInfo info = {};
   info.vertices = vertices;
   info.stride = stride * sizeof(float32);
-  info.vSize = vOffset * sizeof(float32);
+  info.vSize = vertexOffset * sizeof(float32);
   info.indices = indices;
   info.iSize = indexOffset * sizeof(uint16);
   strcpy(info.path, path);
