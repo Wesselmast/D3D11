@@ -14,7 +14,6 @@ struct RenderInfo {
 };
 
 const uint32 RENDER_OBJECT_LIMIT = 1000;
-const uint32 OBJECT_NAME_LIMIT = 256;
 
 struct LightBuffer {
   alignas(16) Vec3 position = { 0.0f, 0.0f, 0.0f };
@@ -37,10 +36,10 @@ struct Texture {
 };
 
 struct ObjectDescriptor {
-  char name[OBJECT_NAME_LIMIT];// = "Default";
+  char name[OBJECT_NAME_LIMIT]; 
   Transform transform;
   Material material;
-  ModelInfo modelInfo;
+  uint32 modelRef;
   uint32 textureRef;
 };
 
@@ -324,7 +323,7 @@ void set_object_material(RenderObjects* renderObjects, uint32 index, Material& m
 void set_object_descriptor(RenderObjects* renderObjects, uint32 index, ObjectDescriptor* descriptor) {
   assert_(descriptor, "Descriptor is not valid!");
   strcpy(renderObjects->descriptors[index].name, descriptor->name);
-  renderObjects->descriptors[index].modelInfo = descriptor->modelInfo;
+  renderObjects->descriptors[index].modelRef = descriptor->modelRef;
   set_object_material(renderObjects, index, descriptor->material);
   set_object_texture(renderObjects, index, descriptor->textureRef);
   set_object_transform(renderObjects, index, descriptor->transform);
@@ -445,13 +444,15 @@ void destroy_object(RenderObjects* renderObjects, int32 index) {     //maybe do 
   renderObjects->descriptors[index] = {};
 }
 
-uint32 create_object(RenderObjects* renderObjects, ObjectDescriptor* desc) {
+uint32 create_object(RenderObjects* renderObjects, ObjectDescriptor* desc, ModelInfo* models) {
   ID3D11Device* device = renderInfo.device;
-  float32* vertices = desc->modelInfo.vertices;
-  uint32 vSize = desc->modelInfo.vSize;
-  uint32 stride = desc->modelInfo.stride;
-  uint16* indices = desc->modelInfo.indices;
-  uint32 iSize = desc->modelInfo.iSize;
+  ModelInfo& mi = models[desc->modelRef];
+  
+  float32* vertices = mi.vertices;
+  uint32 vSize = mi.vSize;
+  uint32 stride = mi.stride;
+  uint16* indices = mi.indices;
+  uint32 iSize = mi.iSize;
 
   uint32 index = 0;
   while(is_object_valid(renderObjects, index)) {
@@ -520,21 +521,12 @@ uint32 create_object(RenderObjects* renderObjects, ObjectDescriptor* desc) {
   return index;
 }
 
-uint32 create_model(RenderObjects* renderObjects, ModelInfo& info) {
+uint32 create_model(RenderObjects* renderObjects, ModelInfo* models, uint32 modelIndex) {
   ObjectDescriptor desc = {};
-  desc.modelInfo = info;
-  strcpy(desc.name, "Default");
-  return create_object(renderObjects, &desc);
-}
-
-uint32 create_cube(RenderObjects* renderObjects) {
-  ModelInfo mi = load_obj("res\\models\\Cube.obj");
-  return create_model(renderObjects, mi);
-}
-
-uint32 create_plane(RenderObjects* renderObjects) {
-  ModelInfo mi = load_obj("res\\models\\Plane.obj");
-  return create_model(renderObjects, mi);
+  desc.modelRef = modelIndex;
+  strcpy(desc.name, models[modelIndex].name);
+  log_("%d: %s\n", modelIndex, desc.name);
+  return create_object(renderObjects, &desc, models);
 }
 
 void refresh_viewport(int32 x, int32 y, uint32 w, uint32 h) {
@@ -585,18 +577,19 @@ void save_level(RenderObjects* renderObjects, const char* path) {
     file.write(((char*)&(descRef.transform)), sizeof(Transform));
     file.write(((char*)&(descRef.material)),  sizeof(Material));
 
-    uint32 mPathLen = strlen(descRef.modelInfo.path) + 1;
-    file.write(((char*)&mPathLen), sizeof(uint32));
-    file.write(((char*)(descRef.modelInfo.path)), mPathLen);
+    // uint32 mPathLen = strlen(descRef.modelInfo.path) + 1;
+    // file.write(((char*)&mPathLen), sizeof(uint32));
+    // file.write(((char*)(descRef.modelInfo.path)), mPathLen);
 
+    file.write(((char*)&(descRef.modelRef)), sizeof(uint32)); 
     file.write(((char*)&(descRef.textureRef)), sizeof(uint32));
-  }
+ }
   
   file.close();
   assert_(file.good(), "Couldn't write to file %s\n", fPath);
 }
 
-void load_level(GameMemory* memory, RenderObjects* renderObjects, const char* path) {
+void load_level(GameMemory* memory, RenderObjects* renderObjects, ModelInfo* models, const char* path) {
   char fPath[512];
   full_path(fPath, path);
 
@@ -621,15 +614,10 @@ void load_level(GameMemory* memory, RenderObjects* renderObjects, const char* pa
     file.read(((char*)&(desc.transform)), sizeof(Transform));
     file.read(((char*)&(desc.material)),  sizeof(Material));
      
-    uint32 mPathLen;
-    file.read((char*)&mPathLen, sizeof(uint32));
-    char mPathBuf[PATH_SIZE_LIMIT];
-    file.read(&mPathBuf[0], mPathLen);
-    desc.modelInfo = load_obj(mPathBuf);
-
+    file.read((char*)&(desc.modelRef), sizeof(uint32));
     file.read((char*)&(desc.textureRef), sizeof(uint32));
 
-    create_object(renderObjects, &desc);
+    create_object(renderObjects, &desc, models);
   }
   file.close();
   assert_(file.good(), "Couldn't read from file %s\n", fPath);

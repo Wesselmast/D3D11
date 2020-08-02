@@ -3,7 +3,9 @@
 #include <string.h>
 #include <fstream>
 
-const uint32 PATH_SIZE_LIMIT = 512;
+const uint32 MAX_VERTEX_COUNT = 12500;
+const uint32 MAX_INDEX_COUNT = 100000;
+const uint32 OBJECT_NAME_LIMIT = 256;
 
 struct FileInfo {
   uint8* memory;
@@ -22,7 +24,7 @@ struct ModelInfo {
   uint32 iSize;
   float32* vertices = nullptr;
   uint16* indices = nullptr;
-  char path[PATH_SIZE_LIMIT];
+  char name[OBJECT_NAME_LIMIT];
 }; 
 
 #pragma pack(push, 1)
@@ -76,11 +78,13 @@ void load_bitmap(GameMemory* memory, const char* path, Bitmap& bmp) {
   bmp.memory = info.memory + header->offset;
 }
 
-ModelInfo load_obj(const char* path) {
+void load_obj(GameMemory* memory, const char* path, ModelInfo& info) {
   char fPath[512];
   full_path(fPath, path);
   FILE* file = fopen(fPath, "r");
   assert_(file, "Trying to load a file that doesn't exist!");
+
+  const uint16 stride = 8;
 
   uint32 vpOffset = 0;
   uint32 vnOffset = 0;
@@ -88,13 +92,13 @@ ModelInfo load_obj(const char* path) {
   uint32 indexOffset = 0;
   uint32 vertexOffset = 0;
   
-  Vec3 vP[10000];
-  Vec3 vN[10000];
-  Vec2 vT[10000];
-  
-  float32 vertices[100000];
-  uint16 indices[100000];
-  const uint16 stride = 8;
+  Vec3 vP[MAX_VERTEX_COUNT];
+  Vec3 vN[MAX_VERTEX_COUNT];
+  Vec2 vT[MAX_VERTEX_COUNT];
+
+  float32* vertices = (float32*)allocate(memory, MAX_VERTEX_COUNT * stride * sizeof(float32));
+  uint16* indices = (uint16*)allocate(memory, MAX_INDEX_COUNT * sizeof(uint16));
+  char name[OBJECT_NAME_LIMIT];
 
   while(1) {
     char line[256];
@@ -102,8 +106,10 @@ ModelInfo load_obj(const char* path) {
     if(result == EOF) {
       break;
     }
-
-    if(!strcmp(line, "v")) {
+    else if(!strcmp(line, "o")) {
+      fscanf(file, "%s\n", name);
+    } 
+    else if(!strcmp(line, "v")) {
       fscanf(file, "%f %f %f\n", 
 	     &(vP[vpOffset].x),
 	     &(vP[vpOffset].y),
@@ -164,7 +170,7 @@ ModelInfo load_obj(const char* path) {
 	    
 	    vertexOffset += stride;
 	    
-	    indices[indexOffset] = (vertexOffset / 8) - 1;  
+	    indices[indexOffset] = (vertexOffset / stride) - 1;  
 	  }
 	  indexOffset++;
 	}
@@ -174,15 +180,12 @@ ModelInfo load_obj(const char* path) {
       }
     }
   }
-  
   fclose(file);
 
-  ModelInfo info = {};
   info.vertices = vertices;
   info.stride = stride * sizeof(float32);
   info.vSize = vertexOffset * sizeof(float32);
   info.indices = indices;
   info.iSize = indexOffset * sizeof(uint16);
-  strcpy(info.path, path);
-  return info;
+  strcpy(info.name, name);
 }
