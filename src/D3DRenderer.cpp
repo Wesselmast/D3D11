@@ -41,7 +41,7 @@ struct ObjectDescriptor {
   Transform transform;
   Material material;
   ModelInfo modelInfo;
-  Texture texture;
+  uint32 textureRef;
 };
 
 struct RenderObjects {
@@ -309,8 +309,8 @@ void set_object_transform(RenderObjects* renderObjects, uint32 index, const Tran
   renderObjects->descriptors[index].transform = transform; 
 }
 
-void set_object_texture(RenderObjects* renderObjects, uint32 index, Texture& texture) {    
-  renderObjects->descriptors[index].texture = texture;
+void set_object_texture(RenderObjects* renderObjects, uint32 index, uint32& textureRef) {    
+  renderObjects->descriptors[index].textureRef = textureRef;
 }
 
 void set_object_material(RenderObjects* renderObjects, uint32 index, Material& material) {
@@ -326,7 +326,7 @@ void set_object_descriptor(RenderObjects* renderObjects, uint32 index, ObjectDes
   strcpy(renderObjects->descriptors[index].name, descriptor->name);
   renderObjects->descriptors[index].modelInfo = descriptor->modelInfo;
   set_object_material(renderObjects, index, descriptor->material);
-  set_object_texture(renderObjects, index, descriptor->texture);
+  set_object_texture(renderObjects, index, descriptor->textureRef);
   set_object_transform(renderObjects, index, descriptor->transform);
 }
 
@@ -370,7 +370,7 @@ void render_loop(const Mat4& viewProjection, const Vec3& DEBUGVec) {
   lightBuffer->Release();
 }
 
-void update_render_objects(RenderObjects* renderObjects) {
+void update_render_objects(RenderObjects* renderObjects, Texture* textures) {
   ID3D11DeviceContext* context = renderInfo.context;
  
   for(uint32 i = 0; i < renderObjects->count; i++) {
@@ -381,7 +381,7 @@ void update_render_objects(RenderObjects* renderObjects) {
     ID3D11Buffer* indexBuffer = renderObjects->indexBuffers[i];
     ID3D11Buffer* transformBuffer = renderObjects->transformBuffers[i];
     uint32 indexBufferSize = renderObjects->indexBufferSizes[i];
-    void* resourceView = renderObjects->descriptors[i].texture.resource;
+    void* resourceView = textures[renderObjects->descriptors[i].textureRef].resource;
     ID3D11VertexShader* vertexShader = renderObjects->vertexShaders[i];
     ID3D11PixelShader* fragmentShader = renderObjects->fragmentShaders[i];
     ID3D11SamplerState* sampler = renderObjects->samplers[i];
@@ -589,9 +589,7 @@ void save_level(RenderObjects* renderObjects, const char* path) {
     file.write(((char*)&mPathLen), sizeof(uint32));
     file.write(((char*)(descRef.modelInfo.path)), mPathLen);
 
-    uint32 tPathLen = strlen(descRef.texture.bitmap.path) + 1;
-    file.write((char*)&tPathLen, sizeof(uint32));
-    file.write(((char*)(descRef.texture.bitmap.path)), tPathLen);
+    file.write(((char*)&(descRef.textureRef)), sizeof(uint32));
   }
   
   file.close();
@@ -629,14 +627,7 @@ void load_level(GameMemory* memory, RenderObjects* renderObjects, const char* pa
     file.read(&mPathBuf[0], mPathLen);
     desc.modelInfo = load_obj(mPathBuf);
 
-    uint32 tPathLen;
-    file.read((char*)&tPathLen, sizeof(uint32));
-    char tPathBuf[PATH_SIZE_LIMIT];
-    file.read(&tPathBuf[0], tPathLen);
-    
-    Bitmap bmp = {};
-    load_bitmap(memory, tPathBuf, bmp);
-    desc.texture = make_texture(bmp);
+    file.read((char*)&(desc.textureRef), sizeof(uint32));
 
     create_object(renderObjects, &desc);
   }

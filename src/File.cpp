@@ -14,7 +14,6 @@ struct Bitmap {
   uint16 width;
   uint16 height;
   uint8* memory = nullptr;
-  char path[PATH_SIZE_LIMIT];
 };
 
 struct ModelInfo {
@@ -75,7 +74,6 @@ void load_bitmap(GameMemory* memory, const char* path, Bitmap& bmp) {
   bmp.width = (uint16)header->width;
   bmp.height = (uint16)header->height;
   bmp.memory = info.memory + header->offset;
-  strcpy(bmp.path, path);
 }
 
 ModelInfo load_obj(const char* path) {
