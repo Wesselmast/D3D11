@@ -37,7 +37,7 @@ void lock_mouse(bool32 confine) {
     ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
   }
   ShowCursor(!confine);
-  input.mouseLocked = confine; 
+  input.mouseLocked = confine;
 } 
 
 void toggle_fullscreen(HWND window) {
@@ -73,8 +73,9 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   switch(uMsg) {
   case WM_ACTIVATE: {
     activeWindow = hwnd;
-    toggle_fullscreen(hwnd);
-    
+    if(forceFullscreen) {
+      toggle_fullscreen(hwnd);
+    }
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui::StyleColorsDark();
@@ -221,6 +222,11 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
   strcat(name, " : DEBUG");
 #elif defined(RELEASE)
   strcat(name, " : RELEASE");
+#endif
+#if defined(SERVER)
+  strcat(name, " : SERVER");
+#elif defined(CLIENT)
+  strcat(name, " : CLIENT");
 #endif
   
   HWND window = create_window(windowWidth, windowHeight, name, false);
