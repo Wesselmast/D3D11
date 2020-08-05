@@ -64,8 +64,8 @@ uint8* allocate(GameMemory* memory, uint64 size) {
 #include "File.cpp"
 #include "ImGUIImpl.cpp"
 
-static uint16 windowWidth  = 960;   //@Note: These dont update. The mark the start size
-static uint16 windowHeight = 540;   //@Note: These dont update. The mark the start size
+static uint16 windowWidth  = 1920;   //@Note: These dont update. The mark the start size
+static uint16 windowHeight = 1080;   //@Note: These dont update. The mark the start size
 #define ASPECT_RATIO (float32)windowWidth / (float32)windowHeight
 
 /*    CHOOSE RENDERER: currently only D3D available    */

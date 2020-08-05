@@ -40,19 +40,40 @@ void lock_mouse(bool32 confine) {
   input.mouseLocked = confine; 
 } 
 
+void toggle_fullscreen(HWND window) {
+  //This code follows Raymond Chen's prescription and wasn't written by me 
+
+  WINDOWPLACEMENT pos;
+  DWORD style = GetWindowLong(window, GWL_STYLE);
+  if(style & WS_OVERLAPPEDWINDOW) {
+    MONITORINFO info = { sizeof(MONITORINFO) };
+    if(GetWindowPlacement(window, &pos) && GetMonitorInfo(MonitorFromWindow(window, MONITOR_DEFAULTTOPRIMARY), &info)) {
+      SetWindowLong(window, GWL_STYLE, style & ~WS_OVERLAPPEDWINDOW);
+      SetWindowPos(window, HWND_TOP,
+		   info.rcMonitor.left, info.rcMonitor.top, 
+		   info.rcMonitor.right - info.rcMonitor.left, 
+		   info.rcMonitor.bottom - info.rcMonitor.top,
+		   SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+    }
+  } 
+  else {
+    SetWindowLong(window, GWL_STYLE, style | WS_OVERLAPPEDWINDOW);
+    SetWindowPlacement(window, &pos);
+    SetWindowPos(window, 0, 0, 0, 0, 0,
+		 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+		 SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+  }
+}
+
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   if (ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam)) return 1;
   
   switch(uMsg) {
-  case WM_SIZE: { 
-    windowWidth  = LOWORD(lParam);
-    windowHeight = HIWORD(lParam);
-    return 0;
-  }
   case WM_ACTIVATE: {
     activeWindow = hwnd;
+    toggle_fullscreen(hwnd);
     
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
