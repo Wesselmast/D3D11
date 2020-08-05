@@ -91,7 +91,7 @@ void load_obj(GameMemory* memory, const char* path, ModelInfo& info) {
   uint32 vtOffset = 0;
   uint32 indexOffset = 0;
   uint32 vertexOffset = 0;
-  
+
   Vec3 vP[MAX_VERTEX_COUNT];
   Vec3 vN[MAX_VERTEX_COUNT];
   Vec2 vT[MAX_VERTEX_COUNT];

@@ -51,6 +51,9 @@ struct GameMemory {
 };
 
 uint8* allocate(GameMemory* memory, uint64 size) {
+  assert_(memory->offset <= memory->size, 
+	  "Too little memory is used! %llu is needed and %llu is available!", 
+	  memory->offset, memory->size);
   uint8* result =  memory->memory + memory->offset;
   memory->offset += size;
   return result;

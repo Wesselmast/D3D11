@@ -161,10 +161,67 @@ Texture make_texture(Bitmap& bmp) {
   return result;
 }
 
+void create_viewport(int32 x, int32 y, uint32 w, uint32 h) {
+  ID3D11DeviceContext* context = renderInfo.context;
+  D3D11_VIEWPORT viewport = {};
+  viewport.TopLeftX = x;
+  viewport.TopLeftY = y;
+  viewport.Width = w;
+  viewport.Height = h;
+  viewport.MinDepth = 0;
+  viewport.MaxDepth = 1;
+  context->RSSetViewports(1, &viewport);
+}
+
+ID3D11DepthStencilView* create_dsv(ID3D11Device* device, ID3D11DeviceContext* context) {
+  ID3D11DepthStencilView* dsv = nullptr;
+
+  D3D11_DEPTH_STENCIL_DESC depthDesc = {};
+  depthDesc.DepthEnable = TRUE;
+  depthDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+  depthDesc.DepthFunc = D3D11_COMPARISON_LESS;
+
+  ID3D11DepthStencilState* depthStencilState;
+  device->CreateDepthStencilState(&depthDesc, &depthStencilState);
+  context->OMSetDepthStencilState(depthStencilState, 1);
+
+  ID3D11Texture2D* depthStencilTexture;
+  D3D11_TEXTURE2D_DESC depthTextureDesc = {};
+  depthTextureDesc.Width = windowWidth;
+  depthTextureDesc.Height = windowHeight;
+  depthTextureDesc.MipLevels = 1;
+  depthTextureDesc.ArraySize = 1;
+  depthTextureDesc.Format = DXGI_FORMAT_D32_FLOAT;
+  depthTextureDesc.SampleDesc.Count = 1;
+  depthTextureDesc.SampleDesc.Quality = 0;
+  depthTextureDesc.Usage = D3D11_USAGE_DEFAULT;
+  depthTextureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+  device->CreateTexture2D(&depthTextureDesc, nullptr, &depthStencilTexture);
+
+  D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+  dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+  dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+  dsvDesc.Texture2D.MipSlice = 0;
+  device->CreateDepthStencilView(depthStencilTexture, &dsvDesc, &dsv);
+
+  depthStencilState->Release();
+  depthStencilTexture->Release();
+  return dsv;
+}
+
+ID3D11RenderTargetView* create_render_target(ID3D11Device* device, IDXGISwapChain* swapchain) {
+  ID3D11RenderTargetView* target = nullptr;
+  ID3D11Resource* backBuffer = nullptr;
+  swapchain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+  device->CreateRenderTargetView(backBuffer, nullptr, &target);
+  if(backBuffer) backBuffer->Release();
+  return target;
+}
+
 void init_renderer(HWND window) {
   ID3D11Device* device = nullptr;
   IDXGISwapChain* swapchain = nullptr;
-  ID3D11DeviceContext* context = nullptr;
+  ID3D11DeviceContext* context = renderInfo.context;
   ID3D11RenderTargetView* target = nullptr;
   ID3D11DepthStencilView* dsv = nullptr;
 
@@ -204,47 +261,16 @@ void init_renderer(HWND window) {
   assert_(device, "Device coulnd't be initialized");
   assert_(context, "Context coulnd't be initialized");
   
-  ID3D11Resource* backBuffer = nullptr;
-  swapchain->GetBuffer(0, __uuidof(ID3D11Resource), ((void**)&backBuffer));
-  device->CreateRenderTargetView(backBuffer, nullptr, &target);
-  if(backBuffer) backBuffer->Release();
-
-  D3D11_DEPTH_STENCIL_DESC depthDesc = {};
-  depthDesc.DepthEnable = TRUE;
-  depthDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-  depthDesc.DepthFunc = D3D11_COMPARISON_LESS;
-
-  ID3D11DepthStencilState* depthStencilState;
-  device->CreateDepthStencilState(&depthDesc, &depthStencilState);
-  context->OMSetDepthStencilState(depthStencilState, 1);
-
-  ID3D11Texture2D* depthStencilTexture;
-  D3D11_TEXTURE2D_DESC depthTextureDesc = {};
-  depthTextureDesc.Width = windowWidth;
-  depthTextureDesc.Height = windowHeight;
-  depthTextureDesc.MipLevels = 1;
-  depthTextureDesc.ArraySize = 1;
-  depthTextureDesc.Format = DXGI_FORMAT_D32_FLOAT;
-  depthTextureDesc.SampleDesc.Count = 1;
-  depthTextureDesc.SampleDesc.Quality = 0;
-  depthTextureDesc.Usage = D3D11_USAGE_DEFAULT;
-  depthTextureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-  device->CreateTexture2D(&depthTextureDesc, nullptr, &depthStencilTexture);
-
-  D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-  dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
-  dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
-  dsvDesc.Texture2D.MipSlice = 0;
-  device->CreateDepthStencilView(depthStencilTexture, &dsvDesc, &dsv);
-
-  depthStencilState->Release();
-  depthStencilTexture->Release();
+  target = create_render_target(device, swapchain);
+  dsv = create_dsv(device, context);
 
   renderInfo.context = context;
   renderInfo.swapchain = swapchain;
   renderInfo.device = device;
   renderInfo.target = target;
   renderInfo.dsv = dsv;
+
+  create_viewport(0, 0, windowWidth, windowHeight); 
 }
 
 void create_vertex_buffer(ID3D11Buffer** vertexBuffer, const void* vertices, uint32 size, uint32 stride) {
@@ -347,7 +373,8 @@ void update_render_targets() {
   ID3D11DeviceContext* context = renderInfo.context;
   ID3D11RenderTargetView* target = renderInfo.target;
   ID3D11DepthStencilView* dsv = renderInfo.dsv;
-  
+
+  if(!target || !dsv) return;
   context->OMSetRenderTargets(1, &target, dsv);
 }
 
@@ -525,20 +552,7 @@ uint32 create_model(RenderObjects* renderObjects, ModelInfo* models, uint32 mode
   ObjectDescriptor desc = {};
   desc.modelRef = modelIndex;
   strcpy(desc.name, models[modelIndex].name);
-  log_("%d: %s\n", modelIndex, desc.name);
   return create_object(renderObjects, &desc, models);
-}
-
-void refresh_viewport(int32 x, int32 y, uint32 w, uint32 h) {
-  ID3D11DeviceContext* context = renderInfo.context;
-  D3D11_VIEWPORT viewport = {};
-  viewport.TopLeftX = x;
-  viewport.TopLeftY = y;
-  viewport.Width = w;
-  viewport.Height = h;
-  viewport.MinDepth = 0;
-  viewport.MaxDepth = 1;
-  context->RSSetViewports(1, &viewport);
 }
 
 void swap_buffers(bool32 vSync) {
