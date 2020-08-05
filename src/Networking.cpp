@@ -4,6 +4,8 @@
 
 #define wsa_fail(errorcode) assert_(false, "WSA ERROR: %d", errorcode);
 
+const uint32 MAX_PACKET_SIZE = kilobytes(8);
+
 enum ESocketOption {
    TCP_NO_DELAY,
 };
@@ -168,4 +170,43 @@ void connect_socket(uint64& socket, const IPEndPoint& ipEndPoint) {
       wsa_fail(WSAGetLastError());
     }
   }
+}
+
+int32 socket_send(uint64& socket, const void* data, int32 length) {
+  int32 totalBytesSent = 0;
+
+  while(totalBytesSent < length) {
+    int32 remaining = length - totalBytesSent;
+    char* offset = (char*)data + totalBytesSent;
+    int32 bytesSent = send(socket, (const char*)offset, remaining, 0);
+    
+    if(bytesSent == SOCKET_ERROR) {
+      log_("eventually this is a fail condition!\n");
+      //wsa_fail(WSAGetLastError());
+      return 0;
+    }    
+    totalBytesSent += bytesSent; 
+  }
+  return 1;
+}
+
+int32 socket_recieve(uint64& socket, void* data, int32 length) {
+  int32 totalBytesRecieved = 0;
+
+  while(totalBytesRecieved < length) {
+    int32 remaining = length - totalBytesRecieved;
+    char* offset = (char*)data + totalBytesRecieved;
+    int32 bytesRecieved = recv(socket, offset, remaining, 0);
+    
+    if(bytesRecieved == 0) {
+      return 0;
+    }
+    if(bytesRecieved == SOCKET_ERROR) {
+      log_("eventually this is a fail condition!\n");
+      //wsa_fail(WSAGetLastError());
+      return 0;
+    }
+    totalBytesRecieved += bytesRecieved; 
+  }
+  return 1;
 }

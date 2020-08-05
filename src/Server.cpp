@@ -14,6 +14,19 @@ void networking_startup() {
   accept_socket(socket, newSocket);
   log_("socket has accepted a new connection!\n");
 
+
+  char buf[256];
+  while(1) {
+    uint32 len;
+    if(!socket_recieve(newSocket, &len, sizeof(uint32))) break;
+
+    len = ntohl(len);
+    assert_(len < MAX_PACKET_SIZE, "Tried to send a package that exceeds the max packet size!");
+
+    if(!socket_recieve(newSocket, &buf[0], len)) break;
+    log_("%s\n", buf);
+  }
+
   close_socket(newSocket);
   log_("the new connection was closed!\n");
 
