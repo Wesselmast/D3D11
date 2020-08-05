@@ -15,7 +15,7 @@ enum IPVersion {
 };
 
 struct IPEndPoint {
-  const char* ip;
+  char ip[16];
   uint8 ipdata[4];
   uint16 port;
   IPVersion ipversion = IPVersion::NONE;
@@ -26,6 +26,19 @@ void print_bytes(const IPEndPoint& endPoint) {
     log_("%d.", (uint32)byte);
   }
   log_("\n");
+}
+
+void print_ip_endpoint(const IPEndPoint& endPoint) {
+  log_("ip endpoint info: \n");
+  switch(endPoint.ipversion) {
+  case IPVersion::IPV4: log_("   ipv4\n"); break;
+  case IPVersion::IPV6: log_("   ipv6\n"); break;
+  default: log_("   unknown"); 
+  }
+  log_("   ip:   %s\n", endPoint.ip);
+  log_("   data: ");
+  print_bytes(endPoint);
+  log_("   port: %d\n", endPoint.port);
 }
 
 void initialize() {
@@ -56,9 +69,22 @@ IPEndPoint create_ip_endpoint(const char* ip, uint16 port) {
   }
   
   if(addr.S_un.S_addr != INADDR_NONE) {
-    ipEndPoint.ip = ip;
+    strcpy(ipEndPoint.ip, ip);
     memcpy(&ipEndPoint.ipdata[0], &addr.S_un.S_addr, sizeof(ULONG)); 
     ipEndPoint.ipversion = IPVersion::IPV4;
+  }
+  return ipEndPoint;
+}
+
+IPEndPoint create_ip_endpoint(sockaddr* addr) {
+  IPEndPoint ipEndPoint = {};
+  
+  if(addr->sa_family == AF_INET) {
+    sockaddr_in* addr4 = (sockaddr_in*)(addr);
+    ipEndPoint.ipversion = IPVersion::IPV4;
+    ipEndPoint.port = ntohs(addr4->sin_port);
+    memcpy(&ipEndPoint.ipdata[0], &addr4->sin_addr, sizeof(ULONG));
+    inet_ntop(AF_INET, &addr4->sin_addr, &ipEndPoint.ip[0], 16);
   }
   return ipEndPoint;
 }
@@ -119,10 +145,15 @@ void socket_listen(uint64& socket, const IPEndPoint& ipEndPoint, int32 backlog) 
 }
 
 void accept_socket(uint64& inSocket, uint64& outSocket) {
-  outSocket = accept(inSocket, nullptr, nullptr);
+  sockaddr_in addr = {};
+  int32 len = sizeof(sockaddr_in);
+
+  outSocket = accept(inSocket, (sockaddr*)&addr, &len);
   if(outSocket == INVALID_SOCKET) {
     wsa_fail(WSAGetLastError());
   }
+
+  print_ip_endpoint(create_ip_endpoint((sockaddr*)&addr));
 }
 
 void connect_socket(uint64& socket, const IPEndPoint& ipEndPoint) {
