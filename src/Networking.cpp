@@ -24,6 +24,12 @@ struct IPEndPoint {
   IPVersion ipversion = IPVersion::NONE;
 };
 
+struct Connection {
+  uint64 socket; 
+  IPEndPoint ipEndPoint; 
+  bool32 valid = 0;
+};
+
 void print_bytes(const IPEndPoint& endPoint) {
   uint8 length;
   switch(endPoint.ipversion) {
@@ -122,6 +128,16 @@ IPEndPoint create_ip_endpoint(sockaddr* addr) {
   return ipEndPoint;
 }
 
+void set_socket_blocking(uint64& socket, bool32 block) {
+  unsigned long blocking    = 0;
+  unsigned long nonblocking = 1;
+  int32 result = ioctlsocket(socket, FIONBIO, block ? &blocking : &nonblocking);
+
+  if(result == SOCKET_ERROR) {
+    wsa_fail(WSAGetLastError());
+  }
+}
+
 void set_socket_option(uint64& socket, ESocketOption option, bool32 value) {
   int32 result;
   switch(option) {
@@ -154,6 +170,8 @@ uint32 create_socket(IPVersion version) {
     wsa_fail(WSAGetLastError());
     return 0;
   }
+  
+  set_socket_blocking(sresult, 0);
   set_socket_option(sresult, ESocketOption::TCP_NO_DELAY, 1);
   return sresult;
 }
@@ -164,6 +182,11 @@ void close_socket(uint64& socket) {
     wsa_fail(WSAGetLastError());
   }
   socket = INVALID_SOCKET;
+}
+
+void close_connection(Connection& connection) {
+  close_socket(connection.socket);
+  connection.valid = 0;
 }
 
 void bind_socket(uint64& socket, const IPEndPoint& ipEndPoint) {
@@ -191,64 +214,68 @@ void bind_socket(uint64& socket, const IPEndPoint& ipEndPoint) {
   }
 }
 
-void socket_listen(uint64& socket, const IPEndPoint& ipEndPoint, int32 backlog) {
-  if(ipEndPoint.ipversion == IPVersion::IPV6) {
-    set_socket_option(socket, ESocketOption::IPV6_ONLY, 0);
+void listen_connection(Connection& c, int32 backlog) {
+  if(c.ipEndPoint.ipversion == IPVersion::IPV6) {
+    set_socket_option(c.socket, ESocketOption::IPV6_ONLY, 0);
   }
   
-  bind_socket(socket, ipEndPoint);
-  int32 result = listen(socket, backlog); 
+  bind_socket(c.socket, c.ipEndPoint);
+  int32 result = listen(c.socket, backlog); 
   if(result) {
     wsa_fail(WSAGetLastError());
   }
 }
 
-IPEndPoint accept_socket(uint64& inSocket, uint64& outSocket, IPVersion version) {
-  if(version == IPVersion::IPV4) {
+bool32 accept_connection(Connection& inC, Connection& outC) {
+  if(inC.ipEndPoint.ipversion == IPVersion::IPV4) {
     sockaddr_in addr = {};
     int32 len = sizeof(sockaddr_in);
     
-    outSocket = accept(inSocket, (sockaddr*)&addr, &len);
-    if(outSocket == INVALID_SOCKET) {
-      wsa_fail(WSAGetLastError());
+    outC.socket = accept(inC.socket, (sockaddr*)&addr, &len);
+    if(outC.socket == INVALID_SOCKET) {
+      return 0;
     }
 
-    return create_ip_endpoint((sockaddr*)&addr);
+    outC.ipEndPoint = create_ip_endpoint((sockaddr*)&addr);
+    outC.valid = 1;
+    return 1;
   }
-  else if(version == IPVersion::IPV6) {
+  else if(inC.ipEndPoint.ipversion == IPVersion::IPV6) {
     sockaddr_in6 addr = {};
     int32 len = sizeof(sockaddr_in6);
     
-    outSocket = accept(inSocket, (sockaddr*)&addr, &len);
-    if(outSocket == INVALID_SOCKET) {
-      wsa_fail(WSAGetLastError());
+    outC.socket = accept(inC.socket, (sockaddr*)&addr, &len);
+    if(outC.socket == INVALID_SOCKET) {
+      return 0;
     }
 
-    return create_ip_endpoint((sockaddr*)&addr);
+    outC.ipEndPoint = create_ip_endpoint((sockaddr*)&addr);
+    outC.valid = 1;
+    return 1; 
   }
 
-  return {};
+  return 0;
 }
 
-void connect_socket(uint64& socket, const IPEndPoint& ipEndPoint) {
-  if(ipEndPoint.ipversion == IPVersion::IPV4) {
+void attempt_connection(Connection& c) {
+  if(c.ipEndPoint.ipversion == IPVersion::IPV4) {
     sockaddr_in addr = {};
     addr.sin_family = AF_INET;
-    memcpy(&addr.sin_addr, &(ipEndPoint.ipdata)[0], sizeof(ULONG));
-    addr.sin_port = htons(ipEndPoint.port);
+    memcpy(&addr.sin_addr, &(c.ipEndPoint.ipdata)[0], sizeof(ULONG));
+    addr.sin_port = htons(c.ipEndPoint.port);
     
-    int32 result = connect(socket, (sockaddr*)&addr, sizeof(sockaddr_in));
+    int32 result = connect(c.socket, (sockaddr*)&addr, sizeof(sockaddr_in));
     if(result) {
       wsa_fail(WSAGetLastError());
     }
   }
-  else if(ipEndPoint.ipversion == IPVersion::IPV6) {
+  else if(c.ipEndPoint.ipversion == IPVersion::IPV6) {
     sockaddr_in6 addr = {};
     addr.sin6_family = AF_INET6;
-    memcpy(&addr.sin6_addr, &(ipEndPoint.ipdata)[0], 16);
-    addr.sin6_port = htons(ipEndPoint.port);
+    memcpy(&addr.sin6_addr, &(c.ipEndPoint.ipdata)[0], 16);
+    addr.sin6_port = htons(c.ipEndPoint.port);
     
-    int32 result = connect(socket, (sockaddr*)&addr, sizeof(sockaddr_in6));
+    int32 result = connect(c.socket, (sockaddr*)&addr, sizeof(sockaddr_in6));
     if(result) {
       wsa_fail(WSAGetLastError());
     }
