@@ -279,6 +279,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
     time += dt;
   }
  quit:
+  game_quit();
   close_window(window, hdc, hrc);
   return 0;
 }

@@ -1,28 +1,36 @@
 #include "Networking.cpp"
 
-void networking_startup() {
+static uint64 clientSocket;
+
+void client_connect() {
   initialize();
   log_("successfully initialized winsock!\n");
 
-  uint64 socket = create_socket();
+  IPEndPoint clientEndPoint = create_ip_endpoint("::1", 4790);
+
+  clientSocket = create_socket(clientEndPoint.ipversion);
   log_("successfully created socket!\n");
 
-  connect_socket(socket, create_ip_endpoint("127.0.0.1", 4790));
+  connect_socket(clientSocket, clientEndPoint);
   log_("socket is successfully connected!\n");
+}
 
-  const uint32 len = 256;
-  char buf[len];
-  strcpy(buf, "The client says hello!\0");
-  while(1) {
-    uint32 nLen = htonl(len); 
-    if(!socket_send(socket, &nLen, sizeof(uint32))) break;
-    if(!socket_send(socket, &buf, len)) break;
-    
-    log_("trying to send some data\n");
-    Sleep(1);
-  }
+bool32 client_update() {
+  Packet packet;
+  packet_insert(packet, 4);
+  packet_insert(packet, 2);
+  packet_insert(packet, 9);
+  packet_insert(packet, "Pleb");
 
-  close_socket(socket);
+  if(!socket_send_packet(clientSocket, packet)) return 0;
+  
+  log_("trying to send some data\n");
+  Sleep(500);
+  return 1;
+}
+
+void client_disconnect() {
+  close_socket(clientSocket);
   log_("successfully closed socket!\n");
 
   shutdown();

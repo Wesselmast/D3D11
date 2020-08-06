@@ -1,37 +1,47 @@
 #include "Networking.cpp"
 
-void networking_startup() {
+static IPEndPoint serverEndPoint;
+static uint64 serverSocket;
+
+void server_startup() {
   initialize();
   log_("successfully initialized winsock!\n");
 
-  uint64 socket = create_socket();
+  serverEndPoint = create_ip_endpoint("::", 4790);
+
+  serverSocket = create_socket(serverEndPoint.ipversion);
   log_("successfully created socket!\n");
 
-  socket_listen(socket, create_ip_endpoint("0.0.0.0", 4790), 5);
+  socket_listen(serverSocket, serverEndPoint, 5);
   log_("socket is successfully listening!\n");
+}
 
+void server_update() {
   uint64 newSocket;
-  accept_socket(socket, newSocket);
+  IPEndPoint newEndPoint = accept_socket(serverSocket, newSocket, serverEndPoint.ipversion);
   log_("socket has accepted a new connection!\n");
-
-
-  char buf[256];
-  while(1) {
-    uint32 len;
-    if(!socket_recieve(newSocket, &len, sizeof(uint32))) break;
-
-    len = ntohl(len);
-    assert_(len < MAX_PACKET_SIZE, "Tried to send a package that exceeds the max packet size!");
-
-    if(!socket_recieve(newSocket, &buf[0], len)) break;
-    log_("%s\n", buf);
-  }
+  print_ip_endpoint(newEndPoint);
 
   close_socket(newSocket);
   log_("the new connection was closed!\n");
 
-  close_socket(socket);
-  log_("successfully closed socket!\n");
+  // Packet packet;
+  // while(1) {
+  //   if(!socket_recieve_packet(newSocket, packet)) break;
+    
+  //   uint32 a, b, c;
+  //   char buf[256];
+  //   packet_extract(packet, a); 
+  //   packet_extract(packet, b); 
+  //   packet_extract(packet, c); 
+  //   packet_extract(packet, buf); 
+  //   log_("%d, %d, %d, %s\n", a, b, c, buf);
+  // }
+}
 
+void server_shutdown() {
+  close_socket(serverSocket);
+  log_("successfully closed socket!\n");
+  
   shutdown();
 }
