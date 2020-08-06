@@ -1,13 +1,11 @@
 #include "Networking.cpp"
 
-static Connection server;
 const uint32 MAX_NUMBER_OF_CONNECTIONS = 4;
-
 
 struct Bridge {
   Connection connections[MAX_NUMBER_OF_CONNECTIONS];
   WSAPOLLFD  descriptors[MAX_NUMBER_OF_CONNECTIONS];
-  uint32 count = 0;
+  uint32 count = 1;
 };
 
 static Bridge serverBridge;
@@ -15,7 +13,8 @@ static Bridge serverBridge;
 void server_startup() {
   initialize();
   log_("successfully initialized winsock!\n");
-
+  
+  Connection server = {};
   server.ipEndPoint = create_ip_endpoint("::", 4790);
 
   server.socket = create_socket(server.ipEndPoint.ipversion);
@@ -29,15 +28,15 @@ void server_startup() {
   socketDesc.events = POLLRDNORM;
   socketDesc.revents = 0;
   
-  serverBridge.descriptors[serverBridge.count] = socketDesc;
-  serverBridge.connections[serverBridge.count] = server;
-  serverBridge.count++;
+  serverBridge.descriptors[0] = socketDesc;
+  serverBridge.connections[0] = server;
 }
 
 void server_update() {
-  WSAPOLLFD tempDescs[serverBridge.count];
+  WSAPOLLFD tempDescs[MAX_NUMBER_OF_CONNECTIONS];
+  Connection& server = serverBridge.connections[0];
   memcpy(tempDescs, serverBridge.descriptors, sizeof(WSAPOLLFD) * MAX_NUMBER_OF_CONNECTIONS);
-
+  
   if(WSAPoll(tempDescs, serverBridge.count, 1) > 0) {
     
     { //SERVER SOCKET CODE
@@ -47,15 +46,24 @@ void server_update() {
 	if(!accept_connection(server, newConnection)) return;
 	log_("socket has accepted a new connection!\n");
 	
-	/* do stuff */
+	uint32 index = 1;
+	while(serverBridge.connections[index].valid) {
+	  index++;
+	  if(index > MAX_NUMBER_OF_CONNECTIONS) {
+	    log_("can't accept another connection!\n");
+	    close_connection(newConnection);
+	    return;
+	  }  
+	}
+
 	WSAPOLLFD newSocketDesc = {};
 	newSocketDesc.fd = newConnection.socket;
 	newSocketDesc.events = POLLRDNORM;
 	newSocketDesc.revents = 0;
-
-	serverBridge.descriptors[serverBridge.count] = newSocketDesc;
-	serverBridge.connections[serverBridge.count] = newConnection;
-	serverBridge.count++;
+	
+	serverBridge.descriptors[index] = newSocketDesc;
+	serverBridge.connections[index] = newConnection;
+	serverBridge.count = index + (index == serverBridge.count); 
 	print_ip_endpoint(newConnection.ipEndPoint);
       }
     }
@@ -66,20 +74,26 @@ void server_update() {
       if(tempDescs[i].revents & POLLERR) {
 	log_("Poll error on port %d", c.ipEndPoint.port);
 	close_connection(c);
-	log_("connection was closed!\n");
+	serverBridge.connections[i] = {};
+	serverBridge.descriptors[i] = {};
+	log_("connection %d was closed!\n", i);
 	continue;
       }
       if(tempDescs[i].revents & POLLHUP) {
 	log_("Poll hangup on port %d", c.ipEndPoint.port);
 	close_connection(c);
-	log_("connection was closed!\n");
+	serverBridge.connections[i] = {};
+	serverBridge.descriptors[i] = {};
+	log_("connection %d was closed!\n", i);
 	continue;
       }
       if(tempDescs[i].revents & POLLNVAL) {
-	log_("Invalid socket on port %d", c.ipEndPoint.port);
-	close_connection(c);
-	log_("connection was closed!\n");
-	continue;
+      	log_("Invalid socket on port %d", c.ipEndPoint.port);
+      	close_connection(c);
+      	serverBridge.connections[i] = {};
+      	serverBridge.descriptors[i] = {};
+      	log_("connection was closed!\n");
+      	continue;
       }
 
       if(tempDescs[i].revents & POLLRDNORM) {
@@ -89,7 +103,9 @@ void server_update() {
 	if(bytesRecieved == 0) {
 	  log_("Connection lost port %d, v0", c.ipEndPoint.port);
 	  close_connection(c);
-	  log_("connection was closed!\n");
+	  serverBridge.connections[i] = {};
+	  serverBridge.descriptors[i] = {};
+	  log_("connection %d was closed!\n", i);
 	  continue;
 	}
 	if(bytesRecieved == SOCKET_ERROR) {
@@ -97,12 +113,14 @@ void server_update() {
 	  if(error != WSAEWOULDBLOCK) {
 	    log_("Connection lost port %d, v1", c.ipEndPoint.port);
 	    close_connection(c);
-	    log_("connection was closed!\n");
+	    serverBridge.connections[i] = {};
+	    serverBridge.descriptors[i] = {};
+	    log_("connection %d was closed!\n", i);
 	    continue;	    
 	  }
 	}
 	if(bytesRecieved > 0) {
-	  log_("recieved message from %d of size %d\n", c.ipEndPoint.port, bytesRecieved);
+	  //log_("recieved message from %d of size %d\n", c.ipEndPoint.port, bytesRecieved);
 	}
       }
     }    
@@ -125,6 +143,6 @@ void server_update() {
 }
 
 void server_shutdown() {
-  close_connection(server);
+  close_connection(serverBridge.connections[0]);
   shutdown();
 }

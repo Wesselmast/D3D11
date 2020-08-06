@@ -186,6 +186,8 @@ void close_socket(uint64& socket) {
 
 void close_connection(Connection& connection) {
   close_socket(connection.socket);
+  connection.socket = 0;
+  connection.ipEndPoint = {};
   connection.valid = 0;
 }
 
@@ -233,6 +235,7 @@ bool32 accept_connection(Connection& inC, Connection& outC) {
     
     outC.socket = accept(inC.socket, (sockaddr*)&addr, &len);
     if(outC.socket == INVALID_SOCKET) {
+      wsa_fail(WSAGetLastError());
       return 0;
     }
 
@@ -246,6 +249,7 @@ bool32 accept_connection(Connection& inC, Connection& outC) {
     
     outC.socket = accept(inC.socket, (sockaddr*)&addr, &len);
     if(outC.socket == INVALID_SOCKET) {
+      wsa_fail(WSAGetLastError());
       return 0;
     }
 
