@@ -63,7 +63,7 @@ void server_update() {
 	
 	serverBridge.descriptors[index] = newSocketDesc;
 	serverBridge.connections[index] = newConnection;
-	serverBridge.count = index + (index == serverBridge.count); 
+	serverBridge.count += (index == serverBridge.count);
 	print_ip_endpoint(newConnection.ipEndPoint);
       }
     }
@@ -72,49 +72,37 @@ void server_update() {
       Connection& c = serverBridge.connections[i];
       if(!c.valid) continue;
       if(tempDescs[i].revents & POLLERR) {
-	log_("Poll error on port %d", c.ipEndPoint.port);
+	log_("Poll error on port %d! Closing..\n", c.ipEndPoint.port);
 	close_connection(c);
-	serverBridge.connections[i] = {};
-	serverBridge.descriptors[i] = {};
-	log_("connection %d was closed!\n", i);
 	continue;
       }
       if(tempDescs[i].revents & POLLHUP) {
-	log_("Poll hangup on port %d", c.ipEndPoint.port);
+	log_("Poll hangup on port %d! Closing..\n", c.ipEndPoint.port);
 	close_connection(c);
-	serverBridge.connections[i] = {};
-	serverBridge.descriptors[i] = {};
-	log_("connection %d was closed!\n", i);
 	continue;
       }
-      if(tempDescs[i].revents & POLLNVAL) {
-      	log_("Invalid socket on port %d", c.ipEndPoint.port);
-      	close_connection(c);
-      	serverBridge.connections[i] = {};
-      	serverBridge.descriptors[i] = {};
-      	log_("connection was closed!\n");
-      	continue;
-      }
+      // if(tempDescs[i].revents & POLLNVAL) {
+      // 	log_("Invalid socket on port %d! Closing..\n", c.ipEndPoint.port);
+      // 	serverBridge.connections[i] = {};
+      // 	serverBridge.descriptors[i] = {};
+      // 	close_connection(c);
+      // 	continue;
+      // }
 
       if(tempDescs[i].revents & POLLRDNORM) {
 	char buf[MAX_PACKET_SIZE];
 	uint32 bytesRecieved = 0;
 	bytesRecieved = recv(tempDescs[i].fd, buf, MAX_PACKET_SIZE, 0);
 	if(bytesRecieved == 0) {
-	  log_("Connection lost port %d, v0", c.ipEndPoint.port);
+	  log_("Connection lost port %d, v0, Closing..\n", c.ipEndPoint.port);
 	  close_connection(c);
-	  serverBridge.connections[i] = {};
-	  serverBridge.descriptors[i] = {};
-	  log_("connection %d was closed!\n", i);
 	  continue;
 	}
 	if(bytesRecieved == SOCKET_ERROR) {
 	  int32 error = WSAGetLastError();
 	  if(error != WSAEWOULDBLOCK) {
-	    log_("Connection lost port %d, v1", c.ipEndPoint.port);
+	    log_("Connection lost port %d, v1, Closing..\n", c.ipEndPoint.port);
 	    close_connection(c);
-	    serverBridge.connections[i] = {};
-	    serverBridge.descriptors[i] = {};
 	    log_("connection %d was closed!\n", i);
 	    continue;	    
 	  }
