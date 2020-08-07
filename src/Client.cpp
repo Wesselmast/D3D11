@@ -35,7 +35,6 @@ bool32 client_update(GameState* state) {
       Vec3 pos, rot, scl;
       uint32 index;
       packet_extract(packet, index);
-      log_("%d\n", index);
       packet_extract(packet, pos); 
       packet_extract(packet, rot); 
       packet_extract(packet, scl);
