@@ -3,6 +3,7 @@ const uint32 MAX_NUMBER_OF_CONNECTIONS = 4;
 struct Bridge {
   Connection connections[MAX_NUMBER_OF_CONNECTIONS];
   WSAPOLLFD  descriptors[MAX_NUMBER_OF_CONNECTIONS];
+  uint32 players[MAX_NUMBER_OF_CONNECTIONS];
   uint32 count = 1;
 };
 
@@ -30,7 +31,9 @@ void server_startup(const IPEndPoint& ipEndPoint) {
   serverBridge.connections[0] = server;
 }
 
-void server_update() {
+void server_update(GameState* state) {
+  RenderObjects* ro = &(state->renderObjects);
+
   WSAPOLLFD tempDescs[MAX_NUMBER_OF_CONNECTIONS];
   Connection& server = serverBridge.connections[0];
   memcpy(tempDescs, serverBridge.descriptors, sizeof(WSAPOLLFD) * MAX_NUMBER_OF_CONNECTIONS);
@@ -61,6 +64,11 @@ void server_update() {
 	
 	serverBridge.descriptors[index] = newSocketDesc;
 	serverBridge.connections[index] = newConnection;
+	serverBridge.players[index] = create_model(ro, models, 0);
+	Material mat = {};
+	mat.materialColor = { 1.0f, 0.0f, 0.0f };
+	set_object_material(ro, serverBridge.players[index], mat);
+
 	serverBridge.count += (index == serverBridge.count);
 	print_ip_endpoint(newConnection.ipEndPoint);
 	
@@ -104,13 +112,12 @@ void server_update() {
 	  continue;
 	}
 
-	uint32 a, b, c;
-	char buf[256];
-	packet_extract(packet, a); 
-	packet_extract(packet, b); 
-	packet_extract(packet, c); 
-	packet_extract(packet, buf); 
-	log_("%d, %d, %d, %s\n", a, b, c, buf);
+	Vec3 pos, rot, scl;
+	uint32 valid;
+	packet_extract(packet, pos); 
+	packet_extract(packet, rot); 
+	packet_extract(packet, scl);
+	set_object_transform(ro, serverBridge.players[i], { pos, rot, scl });
       }
 
       if(tempDescs[i].revents & POLLWRNORM) {
@@ -122,7 +129,6 @@ void server_update() {
 	  close_connection(c);
 	  continue;
 	}
-	log_("sending some data!\n");
       }
 
 	// char buf[MAX_PACKET_SIZE];

@@ -27,6 +27,14 @@ void packet_insert(Packet& packet, uint32 data) {
   packet_append(packet, (const uint8*)&data, sizeof(uint32));
 }
 
+void packet_insert(Packet& packet, float32 data) {
+  packet_append(packet, (const uint8*)&data, sizeof(float32));
+}
+
+void packet_insert(Packet& packet, Vec3 data) {
+  packet_append(packet, (const uint8*)&data, sizeof(Vec3));
+}
+
 void packet_insert(Packet& packet, const char* data) {
   uint32 length = (uint32)strlen(data);
   packet_insert(packet, length);
@@ -39,6 +47,19 @@ void packet_extract(Packet& packet, uint32& data) {
   data = *(uint32*)&packet.data[packet.offset];
   data = ntohl(data);
   packet.offset += sizeof(uint32);
+}
+
+void packet_extract(Packet& packet, float32& data) {
+  assert_(packet.offset + sizeof(data) > packet.length, "Tried to extract more then the buffer allows!");
+
+  data = *(float32*)&packet.data[packet.offset];
+  packet.offset += sizeof(float32);
+}
+
+void packet_extract(Packet& packet, Vec3& data) {
+  assert_(packet.offset + sizeof(data) > packet.length, "Tried to extract more then the buffer allows!");
+  data = *(Vec3*)&packet.data[packet.offset];
+  packet.offset += sizeof(Vec3);
 }
 
 void packet_extract(Packet& packet, char* data) {

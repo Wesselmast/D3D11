@@ -16,7 +16,7 @@ void client_connect(const IPEndPoint& ipEndPoint) {
   log_("client is successfully connected!\n");
 }
 
-bool32 client_update() {
+bool32 client_update(GameState* state) {
   {
     Packet packet;
     if(!socket_recieve_packet(client.socket, packet)) {
@@ -26,16 +26,14 @@ bool32 client_update() {
     
     char buf[256];
     packet_extract(packet, buf); 
-    log_("%s\n", buf);
+//    log_("%s\n", buf);
   }
 
   {
     Packet packet;
-    packet_insert(packet, 4);
-    packet_insert(packet, 2);
-    packet_insert(packet, 9);
-    packet_insert(packet, "Pleb");
-    
+    packet_insert(packet, state->playerTransform.position);
+    packet_insert(packet, state->playerTransform.rotation);
+    packet_insert(packet, state->playerTransform.scale);
     if(!socket_send_packet(client.socket, packet)) return 0;
   }
   return 1;

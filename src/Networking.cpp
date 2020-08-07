@@ -296,6 +296,7 @@ bool32 socket_send(uint64& socket, const void* data, int32 length) {
     
     if(bytesSent == SOCKET_ERROR) {
       if(bytesSent != WSAEWOULDBLOCK) {
+	log_("ewwor!\n");
 	return 0;	    
       }
     }    
