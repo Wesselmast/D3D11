@@ -316,9 +316,12 @@ bool32 socket_recieve(uint64& socket, void* data, int32 length) {
       return 0;
     }
     if(bytesRecieved == SOCKET_ERROR) {
-      log_("eventually this is a fail condition!\n");
-      //wsa_fail(WSAGetLastError());
-      return 0;
+      int32 error = WSAGetLastError();
+      if(error != WSAEWOULDBLOCK) {
+	log_("BLOCKED! Something is wrong D:\n");
+	wsa_fail(error);
+	return 0;	    
+      }
     }
     totalBytesRecieved += bytesRecieved; 
   }

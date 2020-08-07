@@ -8,9 +8,6 @@ hshTODO:
 - Add world to screen coordinates and vice versa
 
 
-NEW STUFF:
-- I can now allocate with the memory arena
-  - Change model loading to work with memory arena
-  - Change save/load system to work with memory arena (no more path saving!)
 
-I NEED TO FIX THE ABOVE ASAP. Save/Load is currently borked 
+PROBLEM:
+- Resizing or moving the window causes the game to freeze, crashing the networking size of things

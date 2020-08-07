@@ -90,26 +90,40 @@ void server_update() {
       // }
 
       if(tempDescs[i].revents & POLLRDNORM) {
-	char buf[MAX_PACKET_SIZE];
-	uint32 bytesRecieved = 0;
-	bytesRecieved = recv(tempDescs[i].fd, buf, MAX_PACKET_SIZE, 0);
-	if(bytesRecieved == 0) {
+	Packet packet;
+	if(!socket_recieve_packet(tempDescs[i].fd, packet)) {
 	  log_("Connection lost port %d, v0, Closing..\n", c.ipEndPoint.port);
 	  close_connection(c);
 	  continue;
 	}
-	if(bytesRecieved == SOCKET_ERROR) {
-	  int32 error = WSAGetLastError();
-	  if(error != WSAEWOULDBLOCK) {
-	    log_("Connection lost port %d, v1, Closing..\n", c.ipEndPoint.port);
-	    close_connection(c);
-	    log_("connection %d was closed!\n", i);
-	    continue;	    
-	  }
-	}
-	if(bytesRecieved > 0) {
+
+	uint32 a, b, c;
+	char buf[256];
+	packet_extract(packet, a); 
+	packet_extract(packet, b); 
+	packet_extract(packet, c); 
+	packet_extract(packet, buf); 
+	log_("%d, %d, %d, %s\n", a, b, c, buf);
+
+
+	// char buf[MAX_PACKET_SIZE];
+	// uint32 bytesRecieved = 0;
+	// bytesRecieved = recv(tempDescs[i].fd, buf, MAX_PACKET_SIZE, 0);
+	// if(bytesRecieved == 0) {
+	//   log_("Connection lost port %d, v0, Closing..\n", c.ipEndPoint.port);
+	//   close_connection(c);
+	//   continue;
+	// }
+	// if(bytesRecieved == SOCKET_ERROR) {
+	//   int32 error = WSAGetLastError();
+	//   if(error != WSAEWOULDBLOCK) {
+	//     log_("Connection lost port %d, v1, Closing..\n", c.ipEndPoint.port);
+	//     close_connection(c);
+	//     log_("connection %d was closed!\n", i);
+	//     continue;	    
+	//   }
+	// }
 	  //log_("recieved message from %d of size %d\n", c.ipEndPoint.port, bytesRecieved);
-	}
       }
     }    
   }
