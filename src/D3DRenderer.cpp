@@ -359,6 +359,10 @@ ObjectDescriptor* get_object_descriptor(RenderObjects* renderObjects, uint32 ind
   return &(renderObjects->descriptors[index]);
 }
 
+Transform get_object_transform(RenderObjects* renderObjects, uint32 index) {
+  return (&(renderObjects->descriptors[index]))->transform;
+}
+
 void update_view_projection(const Mat4& viewProjection) {
   ID3D11DeviceContext* context = renderInfo.context;
 

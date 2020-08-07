@@ -6,7 +6,7 @@
 
 #include "Packet.cpp"
 
-enum ESocketOption {
+enum SocketOption {
    TCP_NO_DELAY,
    IPV6_ONLY
 };
@@ -138,14 +138,14 @@ void set_socket_blocking(uint64& socket, bool32 block) {
   }
 }
 
-void set_socket_option(uint64& socket, ESocketOption option, bool32 value) {
+void set_socket_option(uint64& socket, SocketOption option, bool32 value) {
   int32 result;
   switch(option) {
-  case ESocketOption::TCP_NO_DELAY: {
+  case SocketOption::TCP_NO_DELAY: {
     result = setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, (const char*)&value, sizeof(bool32));
     break;
   }
-  case ESocketOption::IPV6_ONLY: {
+  case SocketOption::IPV6_ONLY: {
     result = setsockopt(socket, IPPROTO_IPV6, IPV6_V6ONLY, (const char*)&value, sizeof(bool32));
     break;
   } 
@@ -172,7 +172,7 @@ uint32 create_socket(IPVersion version) {
   }
   
   set_socket_blocking(sresult, 0);
-  set_socket_option(sresult, ESocketOption::TCP_NO_DELAY, 1);
+  set_socket_option(sresult, SocketOption::TCP_NO_DELAY, 1);
   return sresult;
 }
 
@@ -218,7 +218,7 @@ void bind_socket(uint64& socket, const IPEndPoint& ipEndPoint) {
 
 void listen_connection(Connection& c, int32 backlog) {
   if(c.ipEndPoint.ipversion == IPVersion::IPV6) {
-    set_socket_option(c.socket, ESocketOption::IPV6_ONLY, 0);
+    set_socket_option(c.socket, SocketOption::IPV6_ONLY, 0);
   }
   
   bind_socket(c.socket, c.ipEndPoint);

@@ -33,7 +33,8 @@ void server_startup(const IPEndPoint& ipEndPoint) {
 
 void server_update(GameState* state) {
   RenderObjects* ro = &(state->renderObjects);
-
+  serverBridge.players[0] = state->player;
+  
   WSAPOLLFD tempDescs[MAX_NUMBER_OF_CONNECTIONS];
   Connection& server = serverBridge.connections[0];
   memcpy(tempDescs, serverBridge.descriptors, sizeof(WSAPOLLFD) * MAX_NUMBER_OF_CONNECTIONS);
@@ -73,7 +74,9 @@ void server_update(GameState* state) {
 	print_ip_endpoint(newConnection.ipEndPoint);
 	
 	Packet packet;
-	packet_insert(packet, "Welcome!");
+	packet_insert(packet, PacketType::PLAYER_AMOUNT);
+	packet_insert(packet, serverBridge.count);
+	packet_insert(packet, index);
 	
 	if(!socket_send_packet(newConnection.socket, packet)) {
 	  log_("Connection lost port %d, Closing..\n", newConnection.ipEndPoint.port);
@@ -112,23 +115,42 @@ void server_update(GameState* state) {
 	  continue;
 	}
 
-	Vec3 pos, rot, scl;
-	uint32 valid;
-	packet_extract(packet, pos); 
-	packet_extract(packet, rot); 
-	packet_extract(packet, scl);
-	set_object_transform(ro, serverBridge.players[i], { pos, rot, scl });
+	PacketType type;
+	packet_extract(packet, type);
+
+	switch(type) {
+	case PacketType::PLAYER_TRANSFORM: {
+	  Vec3 pos, rot, scl;
+	  packet_extract(packet, pos); 
+	  packet_extract(packet, rot); 
+	  packet_extract(packet, scl);
+	  set_object_transform(ro, serverBridge.players[i], { pos, rot, scl });
+	  break;
+	}
+	default: log_("Sent package has no server-side implementation!");
+	}
       }
 
       if(tempDescs[i].revents & POLLWRNORM) {
-	Packet packet;
-	packet_insert(packet, "This is from da server boy");
-	
-	if(!socket_send_packet(c.socket, packet)) {
-	  log_("Connection lost port %d, Closing..\n", c.ipEndPoint.port);
-	  close_connection(c);
-	  continue;
+	bool failed = false;
+	for(uint32 j = 0; j < serverBridge.count; j++) {
+	  if(j == i) continue;
+	  Packet packet;
+	  Transform transform = get_object_transform(ro, serverBridge.players[j]);
+	  packet_insert(packet, PacketType::PLAYER_TRANSFORM);
+	  packet_insert(packet, j);
+	  packet_insert(packet, transform.position);
+	  packet_insert(packet, transform.rotation);
+	  packet_insert(packet, transform.scale);
+	  
+	  if(!socket_send_packet(c.socket, packet)) {
+	    log_("Connection lost port %d, Closing..\n", c.ipEndPoint.port);
+	    close_connection(c);
+	    failed = true;
+	    break;
+	  }	  
 	}
+	if(failed) continue;
       }
 
 	// char buf[MAX_PACKET_SIZE];

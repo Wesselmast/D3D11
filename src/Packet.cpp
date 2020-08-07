@@ -2,6 +2,12 @@
 
 const uint32 MAX_PACKET_SIZE = kilobytes(8);
 
+enum PacketType {
+  INVALID,
+  PLAYER_TRANSFORM,
+  PLAYER_AMOUNT,
+};
+
 struct Packet {
   uint32 length = 0;
   uint32 offset = 0;
@@ -27,6 +33,10 @@ void packet_insert(Packet& packet, uint32 data) {
   packet_append(packet, (const uint8*)&data, sizeof(uint32));
 }
 
+void packet_insert(Packet& packet, PacketType data) {
+  packet_insert(packet, (uint32)data);
+}
+
 void packet_insert(Packet& packet, float32 data) {
   packet_append(packet, (const uint8*)&data, sizeof(float32));
 }
@@ -47,6 +57,12 @@ void packet_extract(Packet& packet, uint32& data) {
   data = *(uint32*)&packet.data[packet.offset];
   data = ntohl(data);
   packet.offset += sizeof(uint32);
+}
+
+void packet_extract(Packet& packet, PacketType& data) {
+  uint32 type;
+  packet_extract(packet, type);
+  data = (PacketType)type;
 }
 
 void packet_extract(Packet& packet, float32& data) {
