@@ -295,9 +295,9 @@ bool32 socket_send(uint64& socket, const void* data, int32 length) {
     int32 bytesSent = send(socket, (const char*)offset, remaining, 0);
     
     if(bytesSent == SOCKET_ERROR) {
-      log_("eventually this is a fail condition!\n");
-      //wsa_fail(WSAGetLastError());
-      return 0;
+      if(bytesSent != WSAEWOULDBLOCK) {
+	return 0;	    
+      }
     }    
     totalBytesSent += bytesSent; 
   }

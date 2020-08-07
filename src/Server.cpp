@@ -1,5 +1,3 @@
-#include "Networking.cpp"
-
 const uint32 MAX_NUMBER_OF_CONNECTIONS = 4;
 
 struct Bridge {
@@ -10,12 +8,12 @@ struct Bridge {
 
 static Bridge serverBridge;
 
-void server_startup() {
+void server_startup(const IPEndPoint& ipEndPoint) {
   initialize();
   log_("successfully initialized winsock!\n");
   
   Connection server = {};
-  server.ipEndPoint = create_ip_endpoint("::", 4790);
+  server.ipEndPoint = ipEndPoint;
 
   server.socket = create_socket(server.ipEndPoint.ipversion);
   log_("successfully created socket!\n");
@@ -58,13 +56,22 @@ void server_update() {
 
 	WSAPOLLFD newSocketDesc = {};
 	newSocketDesc.fd = newConnection.socket;
-	newSocketDesc.events = POLLRDNORM;
+	newSocketDesc.events = POLLRDNORM | POLLWRNORM;
 	newSocketDesc.revents = 0;
 	
 	serverBridge.descriptors[index] = newSocketDesc;
 	serverBridge.connections[index] = newConnection;
 	serverBridge.count += (index == serverBridge.count);
 	print_ip_endpoint(newConnection.ipEndPoint);
+	
+	Packet packet;
+	packet_insert(packet, "Welcome!");
+	
+	if(!socket_send_packet(newConnection.socket, packet)) {
+	  log_("Connection lost port %d, Closing..\n", newConnection.ipEndPoint.port);
+	  close_connection(newConnection);
+	  return;
+	}
       }
     }
 
@@ -91,8 +98,8 @@ void server_update() {
 
       if(tempDescs[i].revents & POLLRDNORM) {
 	Packet packet;
-	if(!socket_recieve_packet(tempDescs[i].fd, packet)) {
-	  log_("Connection lost port %d, v0, Closing..\n", c.ipEndPoint.port);
+	if(!socket_recieve_packet(c.socket, packet)) {
+	  log_("Connection lost port %d, Closing..\n", c.ipEndPoint.port);
 	  close_connection(c);
 	  continue;
 	}
@@ -104,7 +111,19 @@ void server_update() {
 	packet_extract(packet, c); 
 	packet_extract(packet, buf); 
 	log_("%d, %d, %d, %s\n", a, b, c, buf);
+      }
 
+      if(tempDescs[i].revents & POLLWRNORM) {
+	Packet packet;
+	packet_insert(packet, "This is from da server boy");
+	
+	if(!socket_send_packet(c.socket, packet)) {
+	  log_("Connection lost port %d, Closing..\n", c.ipEndPoint.port);
+	  close_connection(c);
+	  continue;
+	}
+	log_("sending some data!\n");
+      }
 
 	// char buf[MAX_PACKET_SIZE];
 	// uint32 bytesRecieved = 0;
@@ -124,7 +143,6 @@ void server_update() {
 	//   }
 	// }
 	  //log_("recieved message from %d of size %d\n", c.ipEndPoint.port, bytesRecieved);
-      }
     }    
   }
   

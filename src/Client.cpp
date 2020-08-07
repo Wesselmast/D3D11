@@ -1,12 +1,10 @@
-#include "Networking.cpp"
-
 static Connection client;
 
-void client_connect() {
+void client_connect(const IPEndPoint& ipEndPoint) {
   initialize();
   log_("successfully initialized winsock!\n");
 
-  client.ipEndPoint = create_ip_endpoint("::1", 4790);
+  client.ipEndPoint = ipEndPoint;
 
   client.socket = create_socket(client.ipEndPoint.ipversion);
   log_("successfully created socket!\n");
@@ -19,15 +17,27 @@ void client_connect() {
 }
 
 bool32 client_update() {
-  Packet packet;
-  packet_insert(packet, 4);
-  packet_insert(packet, 2);
-  packet_insert(packet, 9);
-  packet_insert(packet, "Pleb");
+  {
+    Packet packet;
+    if(!socket_recieve_packet(client.socket, packet)) {
+      log_("Looks like we lost connection D:\n");
+      return 0;
+    }
+    
+    char buf[256];
+    packet_extract(packet, buf); 
+    log_("%s\n", buf);
+  }
 
-  if(!socket_send_packet(client.socket, packet)) return 0;
-  
-  log_("trying to send some data\n");
+  {
+    Packet packet;
+    packet_insert(packet, 4);
+    packet_insert(packet, 2);
+    packet_insert(packet, 9);
+    packet_insert(packet, "Pleb");
+    
+    if(!socket_send_packet(client.socket, packet)) return 0;
+  }
   return 1;
 }
 
