@@ -62,7 +62,7 @@ void server_update(GameState* state) {
 	newSocketDesc.fd = newConnection.socket;
 	newSocketDesc.events = POLLRDNORM | POLLWRNORM;
 	newSocketDesc.revents = 0;
-	
+		
 	serverBridge.descriptors[index] = newSocketDesc;
 	serverBridge.connections[index] = newConnection;
 	serverBridge.players[index] = create_model(ro, models, 0);
@@ -72,16 +72,38 @@ void server_update(GameState* state) {
 
 	serverBridge.count += (index == serverBridge.count);
 	print_ip_endpoint(newConnection.ipEndPoint);
+
+	{
+	  for(uint32 i = 0; i < serverBridge.count; i++) {
+	    if(i == index) continue;
+	    Packet packet;
+	    packet_insert(packet, PacketType::NEW_CONNECTION);
+	    packet_insert(packet, i);
+	    if(!socket_send_packet(newConnection.socket, packet)) {
+	      log_("Connection lost port %d, Closing..\n", newConnection.ipEndPoint.port);
+	      close_connection(newConnection);
+	      return;
+	    }
+	  }
+	}
 	
-	Packet packet;
-	packet_insert(packet, PacketType::PLAYER_AMOUNT);
-	packet_insert(packet, serverBridge.count);
-	packet_insert(packet, index);
-	
-	if(!socket_send_packet(newConnection.socket, packet)) {
-	  log_("Connection lost port %d, Closing..\n", newConnection.ipEndPoint.port);
-	  close_connection(newConnection);
-	  return;
+	log_("INDEX = %d, COUNT = %d\n", index, serverBridge.count);
+
+	{
+	  for(uint32 i = 1; i < serverBridge.count; i++) {
+	    if(i == index) continue;
+	    Connection& c = serverBridge.connections[i];
+	    if(!c.valid) continue;
+	    Packet packet;
+	    packet_insert(packet, PacketType::NEW_CONNECTION);
+	    packet_insert(packet, index);
+	    
+	    if(!socket_send_packet(c.socket, packet)) {
+	      log_("Connection lost port %d, Closing..\n", c.ipEndPoint.port);
+	      close_connection(c);
+	      return;
+	    }
+	  }
 	}
       }
     }
@@ -144,8 +166,6 @@ void server_update(GameState* state) {
 	  packet_insert(packet, transform.scale);
 	  
 	  if(!socket_send_packet(c.socket, packet)) {
-	    log_("Connection lost port %d, Closing..\n", c.ipEndPoint.port);
-	    close_connection(c);
 	    failed = true;
 	    break;
 	  }	  

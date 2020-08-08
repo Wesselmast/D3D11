@@ -41,19 +41,13 @@ bool32 client_update(GameState* state) {
       set_object_transform(ro, otherPlayers[index], { pos, rot, scl });
       break;
     }
-    case PacketType::PLAYER_AMOUNT: {
-      uint32 count;
-      uint32 myIndex;
-      packet_extract(packet, count);
-      packet_extract(packet, myIndex);
-
-      for(uint32 i = 0; i < count; i++) {
-	if(i == myIndex) continue;
-	otherPlayers[i] = create_model(ro, models, 0);
-	Material mat = {};
-	mat.materialColor = { 1.0f, 0.0f, 0.0f };
-	set_object_material(ro, otherPlayers[i], mat);
-      }
+    case PacketType::NEW_CONNECTION: {
+      uint32 newConnection;
+      packet_extract(packet, newConnection);
+      otherPlayers[newConnection] = create_model(ro, models, 0);
+      Material mat = {};
+      mat.materialColor = { 1.0f, 0.0f, 0.0f };
+      set_object_material(ro, otherPlayers[newConnection], mat);
       break;
     }
     default: log_("Sent package has no server-side implementation!");
