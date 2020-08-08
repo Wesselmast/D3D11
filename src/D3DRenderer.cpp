@@ -30,6 +30,11 @@ struct Material {
   alignas(16) Vec2 tiling = { 1.0f, 1.0f };
 };
 
+struct PointLight {
+  LightBuffer lightBuffer;
+  uint32 camera;
+};
+
 struct Texture {
   Bitmap bitmap;
   void* resource;
@@ -386,18 +391,16 @@ bool is_object_valid(RenderObjects* renderObjects, uint32 index) {
   return renderObjects->vertexBuffers[index];
 }
 
-void render_loop(const Mat4& viewProjection, const Vec3& DEBUGVec) {
+void render_loop(const Mat4& viewProjection, PointLight* light) {
   ID3D11DeviceContext* context = renderInfo.context;
 
   update_render_targets();
   update_view_projection(viewProjection);
  
-  LightBuffer light = {};
-  light.position = DEBUGVec;
-  ID3D11Buffer* lightBuffer;
-  create_constant_buffer(&lightBuffer, &light, sizeof(LightBuffer));
-  context->PSSetConstantBuffers(0, 1, &lightBuffer);
-  lightBuffer->Release();
+  ID3D11Buffer* lightCBuffer;
+  create_constant_buffer(&lightCBuffer, &light->lightBuffer, sizeof(LightBuffer));
+  context->PSSetConstantBuffers(0, 1, &lightCBuffer);
+  lightCBuffer->Release();
 }
 
 void update_render_objects(RenderObjects* renderObjects, Texture* textures) {
