@@ -9,6 +9,11 @@ struct Bridge {
 
 static Bridge serverBridge;
 
+void disconnect_client(RenderObjects* ro, uint32 client) {
+  close_connection(serverBridge.connections[client]);
+  destroy_object(ro, serverBridge.players[client]);
+}
+
 void server_startup(const IPEndPoint& ipEndPoint) {
   initialize();
   log_("successfully initialized winsock!\n");
@@ -81,7 +86,7 @@ void server_update(GameState* state) {
 	    packet_insert(packet, i);
 	    if(!socket_send_packet(newConnection.socket, packet)) {
 	      log_("Connection lost port %d, Closing..\n", newConnection.ipEndPoint.port);
-	      close_connection(newConnection);
+	      disconnect_client(ro, index);
 	      return;
 	    }
 	  }
@@ -100,7 +105,7 @@ void server_update(GameState* state) {
 	    
 	    if(!socket_send_packet(c.socket, packet)) {
 	      log_("Connection lost port %d, Closing..\n", c.ipEndPoint.port);
-	      close_connection(c);
+	      disconnect_client(ro, i);
 	      return;
 	    }
 	  }
@@ -113,12 +118,12 @@ void server_update(GameState* state) {
       if(!c.valid) continue;
       if(tempDescs[i].revents & POLLERR) {
 	log_("Poll error on port %d! Closing..\n", c.ipEndPoint.port);
-	close_connection(c);
+	disconnect_client(ro, i);
 	continue;
       }
       if(tempDescs[i].revents & POLLHUP) {
 	log_("Poll hangup on port %d! Closing..\n", c.ipEndPoint.port);
-	close_connection(c);
+	disconnect_client(ro, i);
 	continue;
       }
       // if(tempDescs[i].revents & POLLNVAL) {
@@ -133,7 +138,7 @@ void server_update(GameState* state) {
 	Packet packet;
 	if(!socket_recieve_packet(c.socket, packet)) {
 	  log_("Connection lost port %d, Closing..\n", c.ipEndPoint.port);
-	  close_connection(c);
+	  disconnect_client(ro, i);
 	  continue;
 	}
 
