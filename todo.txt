@@ -1,12 +1,31 @@
-hshTODO:
-- Shadows
-- Demo level should be there as soon as possible!
+TODO:
+
+Rendering:
 - Fix up viewports : ~
-- Selecting objects should be done on the mouse pointer, not the middle of the screen
-- Add world to screen coordinates and vice versa
-- Connect a database and add a login system for players
+- Shadows
 - 2D rendering. This should also get its own rendering pool (I think)
+- PBR
+- Multiple lights
+- Skeletal animation
 
+Math:
+- WorldToScreen conversion and vice versa
+- RayToScreen function to allow selecting objects with the mouse for both gameplay and for editing.
 
-PROBLEM:
-- Only two players can play simultaniously at the moment
+Login System:
+- Try out a database that isn't localhost
+- Fix the login system to link score to the password and username (no duplication!) 
+
+Networking:
+- Fix networking so that it works without delay for 4 players instead of just 2
+
+Game:
+- Adding models:
+  - Cactus
+  - Saloon
+  - Wagon
+  - Haybales
+  - Dry grass
+- Adding gameplay:
+  - Shooting an object towards the mouse position
+  
