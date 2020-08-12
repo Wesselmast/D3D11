@@ -68,7 +68,7 @@ void toggle_fullscreen(HWND window) {
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
-  if (ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam)) return 1;
+  if (ImGui_ImplWin32_WndProcHandler(hwnd, uMsg, wParam, lParam)) return 0;
   
   switch(uMsg) {
   case WM_ACTIVATE: {
