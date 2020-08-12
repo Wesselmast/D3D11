@@ -9,7 +9,7 @@ set dLflags=-g
 set rLflags=-Wl,-subsystem:windows
 set linkerpaths=-LLib\\10.0.17763.0\\um\\x86\\
 set includepaths=-IInclude\\10.0.17763.0\\ 
-set libraries=-lopengl32 -luser32 -lgdi32 -ld3d11
+set libraries=-lopengl32 -luser32 -lgdi32 -ld3d11 -lodbc32
 set compiler=clang++
 set caching=ccache
 
