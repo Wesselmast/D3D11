@@ -16,6 +16,7 @@ Math:
 
 Login System:
 - Transfer SQL server to the actual server computer
+- Make sure two users cannot be logged in at the same time
 
 Networking:
 - Fix networking so that it works without delay for 4 players instead of just 2
