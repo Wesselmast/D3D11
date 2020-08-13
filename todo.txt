@@ -15,7 +15,7 @@ Math:
 - RayToScreen function to allow selecting objects with the mouse for both gameplay and for editing.
 
 Login System:
-- Fix the login system to link score to the password and username (no duplication!) 
+- Actually make a login window and display a few stats once a user is logged in.
 
 Networking:
 - Fix networking so that it works without delay for 4 players instead of just 2
@@ -29,3 +29,6 @@ Game:
   - Dry grass
 - Adding gameplay:
   - Shooting an object towards the mouse position
+
+Other:
+- Fix the annoying bug where typing in ImGui also sends events to the game / editor
