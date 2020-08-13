@@ -15,7 +15,6 @@ Math:
 - RayToScreen function to allow selecting objects with the mouse for both gameplay and for editing.
 
 Login System:
-- Try out a database that isn't localhost
 - Fix the login system to link score to the password and username (no duplication!) 
 
 Networking:
