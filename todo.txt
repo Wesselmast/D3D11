@@ -7,6 +7,8 @@ Rendering:
 - PBR
 - Multiple lights
 - Skeletal animation
+- Particle system
+- Outline effect for selected objects
 
 Math:
 - WorldToScreen conversion and vice versa
@@ -28,4 +30,3 @@ Game:
   - Dry grass
 - Adding gameplay:
   - Shooting an object towards the mouse position
-  
