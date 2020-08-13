@@ -15,7 +15,7 @@ Math:
 - RayToScreen function to allow selecting objects with the mouse for both gameplay and for editing.
 
 Login System:
-- Actually make a login window and display a few stats once a user is logged in.
+- Transfer SQL server to the actual server computer
 
 Networking:
 - Fix networking so that it works without delay for 4 players instead of just 2
