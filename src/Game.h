@@ -5,6 +5,7 @@ struct GameInput {
   bool32 left;
   bool32 down;
   bool32 right;
+  bool32 close;
   bool32 quit;
   bool32 alt;
   bool32 editorMode;

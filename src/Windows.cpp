@@ -120,10 +120,14 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
   case WM_KEYUP: {
     bool32 wasDown = ((lParam & (1 << 30)) != 0);
     bool32 isDown  = ((lParam & (1 << 31)) == 0);
-    if(wasDown == isDown) return 0;
-
+    
     switch(wParam) {
-    case VK_MENU:    input.alt  = isDown; return 0;
+    case VK_MENU: input.alt  = isDown; return 0;
+    }
+
+    if(wasDown == isDown) return 0;
+    if(wParam == VK_F4 && input.alt) {
+      input.quit = true;
     }
 
     bool32 fDown = isDown & !imgui_focusing_anything();
@@ -133,7 +137,7 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case 'S': input.down = fDown;        return 0;
     case 'D': input.right = fDown;       return 0;
     case 'H': input.editorMode = fDown;  return 0;
-    case VK_ESCAPE:  input.quit = fDown; return 0;
+    case VK_ESCAPE:  input.close = fDown; return 0;
     }
     return 0;
   }
@@ -276,7 +280,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
       DispatchMessage(&message);
     }
     
-    if(game_update(&gameMemory, &input, dt, time)) PostQuitMessage(0);
+    if(!game_update(&gameMemory, &input, dt, time)) PostQuitMessage(0);
     swap_buffers(true);
     clear_buffer(0.5f, 0.0f, 0.5f, 1.0f);
 
