@@ -50,7 +50,7 @@ bool line_cast(RenderObjects* renderObjects, uint32& out, Vec3 start, Vec3 end) 
 	return true;
       }
     }
-    inc += 0.02f;
+    inc += 0.002f;
   }
   return false;
 }

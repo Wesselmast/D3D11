@@ -105,6 +105,15 @@ Vec3 operator/(const Vec3& vec, float32 scalar) {
   return result;
 }
 
+Vec4 operator/(const Vec4& vec, float32 scalar) {
+  Vec4 result = {};
+  result.x = vec.x / scalar;
+  result.y = vec.y / scalar;
+  result.z = vec.z / scalar;
+  result.w = vec.w / scalar;
+  return result;
+}
+
 Vec3 operator+(const Vec3& a, const Vec3& b) {
   Vec3 result = {};
   result.x = a.x + b.x;
@@ -213,6 +222,15 @@ Mat4 operator*(const Mat4& a, const Mat4& b) {  //@Performance: SIMD
   return mat;
 }
 
+Vec4 operator*(const Mat4& a, const Vec4& vec) {
+  Vec4 result = {};
+  result.x = a.m0[0] * vec.x + a.m1[0] * vec.y + a.m2[0] * vec.z + a.m3[0] * vec.w; 
+  result.y = a.m0[1] * vec.x + a.m1[1] * vec.y + a.m2[1] * vec.z + a.m3[1] * vec.w; 
+  result.z = a.m0[2] * vec.x + a.m1[2] * vec.y + a.m2[2] * vec.z + a.m3[2] * vec.w; 
+  result.w = a.m0[3] * vec.x + a.m1[3] * vec.y + a.m2[3] * vec.z + a.m3[3] * vec.w; 
+  return result;
+}
+
 Mat4 operator*(const Mat4& a, float32 b) {
   Mat4 mat = {};
   mat.m0[0] = a.m0[0] * b;
@@ -237,6 +255,7 @@ Mat4 operator*(const Mat4& a, float32 b) {
   
   return mat;
 }
+
 
 Mat4 mat4_perspective(float32 width, float32 height, float32 near, float32 far) {
   Mat4 mat = {};

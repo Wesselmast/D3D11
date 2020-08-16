@@ -32,3 +32,34 @@ uint32 create_camera(Cameras* cameras) {
   cameras->count++;
   return index;
 }
+
+// Vec3 world_to_screen(Cameras* cameras, const uint32& camera, const Vec3& vec) {
+//   Vec4 vec4D = { vec.x, vec.y, vec.z, 1.0f };
+//   Vec4 clipSpace = cameras->projectionMatrixes[camera] *
+//                    (cameras->viewMatrixes[camera] * vec4D);
+//   Vec3 ndcSpace;
+//   if(clipSpace.w == 0.0f) {
+//     ndcSpace = vec3_from_scalar(0.0f);
+//   }
+//   else {
+//     ndcSpace = { clipSpace.x / clipSpace.w,
+// 		 clipSpace.y / clipSpace.w,
+// 		 clipSpace.z / clipSpace.w };
+//   }
+  
+//   log_("NDC SPACE: \n");
+//   vec3_print(ndcSpace);
+//   return ndcSpace;
+// }
+
+Vec3 screen_to_world(Cameras* cameras, const uint32& camera, const Vec2& vec) {
+  float32 x = 2.0f * vec.x / windowWidth  - 1.0f;
+  float32 y = 2.0f * vec.y / windowHeight - 1.0f;
+
+  Vec4 vec4D = { x, -y, 1.0f, 1.0f };
+  Mat4 ivp = mat4_inverse(get_view_projection(cameras, camera));
+  Vec4 dir =  ivp * vec4D;
+  
+  Vec3 dir3D = { dir.x, dir.y, dir.z };
+  return dir3D;
+}
