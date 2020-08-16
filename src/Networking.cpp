@@ -12,7 +12,7 @@ enum SocketOption {
 };
 
 enum IPVersion {
-   NONE,
+   IP_NONE,
    IPV4,
    IPV6
 };
@@ -21,7 +21,7 @@ struct IPEndPoint {
   char ip[16];
   uint8 ipdata[16];
   uint16 port;
-  IPVersion ipversion = IPVersion::NONE;
+  IPVersion ipversion = IPVersion::IP_NONE;
 };
 
 struct Connection {

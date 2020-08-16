@@ -3,8 +3,8 @@
 #include <string.h>
 #include <fstream>
 
-const uint32 MAX_VERTEX_COUNT = 12500;
-const uint32 MAX_INDEX_COUNT = 100000;
+const uint32 MAX_VERTEX_COUNT = 20000;
+const uint32 MAX_INDEX_COUNT = 160000;
 const uint32 OBJECT_NAME_LIMIT = 256;
 
 struct FileInfo {
