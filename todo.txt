@@ -33,6 +33,7 @@ Game:
   - Dry grass
 - Adding gameplay:
   - Shooting an object towards the mouse position
+  - Drawing a 2d reticle at the mouse position
 
 Other:
 - Fix the annoying bug where typing in ImGui also sends events to the game / editor

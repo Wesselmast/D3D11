@@ -70,11 +70,7 @@ void server_update(GameState* state) {
 		
 	serverBridge.descriptors[index] = newSocketDesc;
 	serverBridge.connections[index] = newConnection;
-	serverBridge.players[index] = create_model(ro, models, 0);
-	Material mat = {};
-	mat.materialColor = { 1.0f, 0.0f, 0.0f };
-	set_object_material(ro, serverBridge.players[index], mat);
-
+	serverBridge.players[index] = create_player(ro, models, true);
 	serverBridge.count += (index == serverBridge.count);
 	print_ip_endpoint(newConnection.ipEndPoint);
 

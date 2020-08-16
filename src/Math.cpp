@@ -160,7 +160,14 @@ Vec3 vec3_cross(const Vec3& a, const Vec3& b) {
 
 float32 vec3_dot(const Vec3& a, const Vec3& b) {
   return a.x * b.x + a.y * b.y + a.z * b.z;
-  
+}
+
+float32 vec3_angle(const Vec3& a, const Vec3& b) {
+  return acos(clamp(vec3_dot(a, b) / (vec3_length(a) * vec3_length(b)), -1.0f, 1.0f));
+}
+
+float32 vec2_angle(const Vec2& a, const Vec2& b) {
+  return atan2(b.y - a.y, b.x - a.x);
 }
 
 Vec3 vec3_forward(const Vec3& rot) {

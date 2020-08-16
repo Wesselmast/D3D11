@@ -478,7 +478,7 @@ void destroy_object(RenderObjects* renderObjects, int32 index) {     //maybe do 
   renderObjects->descriptors[index] = {};
 }
 
-uint32 create_object(RenderObjects* renderObjects, ObjectDescriptor* desc, ModelInfo* models) {
+uint32 create_object_from_index(RenderObjects* renderObjects, ObjectDescriptor* desc, ModelInfo* models, uint32 index) {
   ID3D11Device* device = renderInfo.device;
   ModelInfo& mi = models[desc->modelRef];
   
@@ -487,11 +487,6 @@ uint32 create_object(RenderObjects* renderObjects, ObjectDescriptor* desc, Model
   uint32 stride = mi.stride;
   uint16* indices = mi.indices;
   uint32 iSize = mi.iSize;
-
-  uint32 index = 0;
-  while(is_object_valid(renderObjects, index)) {
-    index++;
-  }
 
   assert_(index < RENDER_OBJECT_LIMIT, "Cannot create more than %d objects!", RENDER_OBJECT_LIMIT);
 
@@ -555,6 +550,14 @@ uint32 create_object(RenderObjects* renderObjects, ObjectDescriptor* desc, Model
   return index;
 }
 
+uint32 create_object(RenderObjects* renderObjects, ObjectDescriptor* desc, ModelInfo* models) {
+  uint32 index = 0;
+  while(is_object_valid(renderObjects, index)) {
+    index++;
+  }
+  return create_object_from_index(renderObjects, desc, models, index);
+}
+
 uint32 create_model(RenderObjects* renderObjects, ModelInfo* models, uint32 modelIndex) {
   ObjectDescriptor desc = {};
   desc.modelRef = modelIndex;
@@ -592,22 +595,19 @@ void save_level(RenderObjects* renderObjects, const char* path) {
     ObjectDescriptor& descRef = renderObjects->descriptors[i];
 
     uint32 nameLen = strlen(descRef.name) + 1;
-    file.write((char*)&nameLen,               sizeof(uint32));
-    file.write(((char*)&(descRef.name)),      nameLen);
+    file.write((char*)&nameLen, sizeof(uint32));
+    file.write(((char*)&(descRef.name)), nameLen);
     log_("%s\n", descRef.name);
-    file.write(((char*)&(descRef.transform)), sizeof(Transform));
-    file.write(((char*)&(descRef.material)),  sizeof(Material));
 
-    // uint32 mPathLen = strlen(descRef.modelInfo.path) + 1;
-    // file.write(((char*)&mPathLen), sizeof(uint32));
-    // file.write(((char*)(descRef.modelInfo.path)), mPathLen);
+    file.write(((char*)&(descRef.transform)), sizeof(Transform));
+    file.write(((char*)&(descRef.material)), sizeof(Material));
 
     file.write(((char*)&(descRef.modelRef)), sizeof(uint32)); 
     file.write(((char*)&(descRef.textureRef)), sizeof(uint32));
- }
+  }
   
-  file.close();
   assert_(file.good(), "Couldn't write to file %s\n", fPath);
+  file.close();
 }
 
 void load_level(GameMemory* memory, RenderObjects* renderObjects, ModelInfo* models, const char* path) {
@@ -640,6 +640,8 @@ void load_level(GameMemory* memory, RenderObjects* renderObjects, ModelInfo* mod
 
     create_object(renderObjects, &desc, models);
   }
+
+  //log_("EOF: %d, GOOD: %d, BAD: %d, FAIL: %d\n", file.eof(), file.good(), file.bad(), file.fail());
+  assert_(file.eof() || file.good(), "Couldn't read from file %s\n", fPath);
   file.close();
-  assert_(file.good(), "Couldn't read from file %s\n", fPath);
 }

@@ -44,10 +44,7 @@ bool32 client_update(GameState* state) {
     case PacketType::NEW_CONNECTION: {
       uint32 newConnection;
       packet_extract(packet, newConnection);
-      otherPlayers[newConnection] = create_model(ro, models, 0);
-      Material mat = {};
-      mat.materialColor = { 1.0f, 0.0f, 0.0f };
-      set_object_material(ro, otherPlayers[newConnection], mat);
+      otherPlayers[newConnection] = create_player(ro, models, true);
       break;
     }
     default: log_("Sent package has no server-side implementation!");

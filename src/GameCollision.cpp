@@ -37,7 +37,7 @@ bool check_if_in_bounds(RenderObjects* renderObjects, uint32 index, Vec3 point) 
          pz2 <= zLen;
 }
 
-bool line_cast(RenderObjects* renderObjects, uint32& out, Vec3 start, Vec3 end) { //can def be faster
+bool line_cast(RenderObjects* renderObjects, uint32& out, Vec3& outV, Vec3 start, Vec3 end) { //can def be faster
   Vec3 current = start;
   float32 inc = 0.0f;
   while(!vec3_equal(current, end, 1.0f)) {
@@ -46,6 +46,7 @@ bool line_cast(RenderObjects* renderObjects, uint32& out, Vec3 start, Vec3 end) 
     for(uint32 i = 0; i < renderObjects->count; i++) {
       if(!is_object_valid(renderObjects, i)) continue;
       if(check_if_in_bounds(renderObjects, i, current)) {
+	outV = current;
 	out = i;
 	return true;
       }
