@@ -103,7 +103,8 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     SetForegroundWindow(hwnd);
     activeWindow = hwnd;
     if(!imgui_hovering_anything()) {
-      input.fire = true; 
+      input.fire = true;
+      input.click = true;
     }
     return 0;
   }
