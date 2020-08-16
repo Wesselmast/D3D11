@@ -11,8 +11,11 @@ Rendering:
 - Outline effect for selected objects
 
 Math:
-- WorldToScreen conversion and vice versa
+- The bounds check is definately not right yet (looks like a scale issue?)
+- There should probably be some way to wireframe-represent the colliders
 - RayToScreen function to allow selecting objects with the mouse for both gameplay and for editing.
+  => THIS is added now, but maybe add an outline effect to show which object has been selected?  
+
 
 Login System:
 - Transfer SQL server to the actual server computer
