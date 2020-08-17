@@ -143,11 +143,10 @@ void server_update(GameState* state) {
 
 	switch(type) {
 	case PacketType::PLAYER_TRANSFORM: {
-	  Vec3 pos, rot, scl;
-	  packet_extract(packet, pos); 
-	  packet_extract(packet, rot); 
-	  packet_extract(packet, scl);
-	  set_object_transform(ro, serverBridge.players[i], { pos, rot, scl });
+	  Transform t;
+	  packet_extract(packet, t.position); 
+	  packet_extract(packet, t.rotation); 
+	  set_object_transform(ro, serverBridge.players[i], t);
 	  break;
 	}
 	default: log_("Sent package has no server-side implementation!");
@@ -164,7 +163,6 @@ void server_update(GameState* state) {
 	  packet_insert(packet, j);
 	  packet_insert(packet, transform.position);
 	  packet_insert(packet, transform.rotation);
-	  packet_insert(packet, transform.scale);
 	  
 	  if(!socket_send_packet(c.socket, packet)) {
 	    failed = true;

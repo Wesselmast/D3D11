@@ -5,14 +5,12 @@
 #include "Config.cpp"
 #include "GameLogic.cpp"
 
-const uint32 AMOUNT_OF_TEXTURES = 20;
-const uint32 AMOUNT_OF_MODELS = 20;
-
 struct GameState {
   RenderObjects renderObjects;
   Cameras cameras;
 
   SQLInfo sqlInfo;
+  AccountInfo accountInfo;
 
   uint32 editorCamera;
   uint32 gameCamera;
@@ -35,11 +33,12 @@ struct GameState {
   Transform playerTransform;
   float32 playerSpeed;  
   
-  AccountInfo accountInfo;
-
   std::vector<Bullet> bullets;
   float32 fireInterval;
 };
+
+const uint32 AMOUNT_OF_TEXTURES = 20;
+const uint32 AMOUNT_OF_MODELS = 20;
 
 static Texture textures[AMOUNT_OF_TEXTURES];
 static ModelInfo models[AMOUNT_OF_MODELS];
@@ -376,7 +375,7 @@ uint32 game_mode(GameState* state, GameInput* input, float64 dt, float64 time) {
   }
   
   Vec3 p = state->playerTransform.position;
-  state->cameraPos = {p.x, 0.0f, p.z};
+  state->cameraPos = {p.x, 5.0f, p.z};
   state->cameraRot = { -pi() * 0.5f, 0.0f, 0.0f};
   set_camera_transform(cameras, state->gameCamera, state->cameraPos, state->cameraRot);
   return !input->quit;

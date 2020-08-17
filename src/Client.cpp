@@ -32,13 +32,12 @@ bool32 client_update(GameState* state) {
     
     switch(type) {
     case PacketType::PLAYER_TRANSFORM: {
-      Vec3 pos, rot, scl;
+      Transform t;
       uint32 index;
       packet_extract(packet, index);
-      packet_extract(packet, pos); 
-      packet_extract(packet, rot); 
-      packet_extract(packet, scl);
-      set_object_transform(ro, otherPlayers[index], { pos, rot, scl });
+      packet_extract(packet, t.position); 
+      packet_extract(packet, t.rotation); 
+      set_object_transform(ro, otherPlayers[index], t);
       break;
     }
     case PacketType::NEW_CONNECTION: {
@@ -55,7 +54,6 @@ bool32 client_update(GameState* state) {
     packet_insert(packet, PacketType::PLAYER_TRANSFORM);
     packet_insert(packet, state->playerTransform.position);
     packet_insert(packet, state->playerTransform.rotation);
-    packet_insert(packet, state->playerTransform.scale);
     if(!socket_send_packet(client.socket, packet)) return 0;
   }
   return 1;
