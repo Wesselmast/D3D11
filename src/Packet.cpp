@@ -5,7 +5,8 @@ const uint32 MAX_PACKET_SIZE = kilobytes(8);
 enum PacketType {
   INVALID,
   PLAYER_TRANSFORM,
-  NEW_CONNECTION
+  NEW_CONNECTION,
+  BULLET_UPDATE
 };
 
 struct Packet {

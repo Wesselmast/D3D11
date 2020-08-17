@@ -53,7 +53,6 @@ bool line_cast(RenderObjects* renderObjects, uint32& out, Vec3& outV, Vec3 start
   float32 inc = 0.0f;
   while(!vec3_equal(current, end, 1.0f)) {
     current = vec3_lerp(start, end, inc);
-
     if(check_if_in_any_bounds(renderObjects, out, current)) {
       outV = current;
       return true;

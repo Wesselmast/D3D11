@@ -176,3 +176,16 @@ bool32 update_account(const AccountInfo& account, SQLInfo* info) {
   release_sql_statement(stmt);
   return success;
 }
+
+void update_score(const AccountInfo& account, SQLInfo* info, uint64 score) {
+  _ltoa(score, (char*)account.score, 10);
+  
+  if(!update_account(account, info)) {
+    log_("Couldn't update the score for you. Something went wrong!\n");
+  }
+}
+
+void increase_score(const AccountInfo& account, SQLInfo* info, uint64 inc) {
+  int64 score = atol(account.score);
+  update_score(account, info, score + inc);
+}

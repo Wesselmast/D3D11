@@ -265,11 +265,7 @@ void render_imgui(GameMemory* memory, GameState* state) {
 	//what's it gonna be?!
 	score += rand() % gamble * 2;
 	
-	_ltoa(score, state->accountInfo.score, 10);
-	
-	if(!update_account(state->accountInfo, &(state->sqlInfo))) {
-	  log_("Couldn't update the score for you. Something went wrong!\n");
-	}
+	update_score(state->accountInfo, &(state->sqlInfo), score);
       }
       else {
 	log_("You don't have enough money to spin! D:\n");
@@ -357,7 +353,7 @@ uint32 game_mode(GameState* state, GameInput* input, float64 dt, float64 time) {
     bDesc.startPos = state->playerTransform.position;
     bDesc.direction = vec3_forward(state->playerTransform.rotation);
     bDesc.speed = 0.75f;
-    bDesc.lifeTime = 0.4f;
+    bDesc.lifeTime = 1.0f;
     state->bullets.push_back(spawn_bullet(ro, models, bDesc));
     state->anySelected = true;
   }
@@ -365,14 +361,27 @@ uint32 game_mode(GameState* state, GameInput* input, float64 dt, float64 time) {
   for(uint32 i = 0; i < state->bullets.size(); i++) {
     Bullet& bullet = state->bullets[i];
     if(bullet.valid) {
-      BulletResult bResult = update_bullet(ro, &bullet, dt, state->player);
+      uint32 outRef;
+      BulletResult bResult = update_bullet(ro, &bullet, dt, state->player, outRef);
+      if(bResult == BulletResult::BULLET_HIT) {
+#if defined(NETWORKING)
+	for(uint32 c = 0; c < MAX_NUMBER_OF_CONNECTIONS; c++) {
+	  if(otherPlayers[c] == outRef || serverBridge.players[c] == outRef) {
+	    increase_score(state->accountInfo, &state->sqlInfo, 500);
+	  }
+	} 
+#endif
+      }
+      
       if(bResult != BulletResult::BULLET_NONE) {
 	destroy_bullet(ro, &bullet);
-	state->bullets.erase(state->bullets.begin());
-	i--;
+	state->bullets.erase(state->bullets.begin() + i);
+	i = 0;
       }
     }
   }
+
+  log_("SCORE: %llu\n", state->bullets.size());
   
   Vec3 p = state->playerTransform.position;
   state->cameraPos = {p.x, 5.0f, p.z};
@@ -460,7 +469,7 @@ int32 game_update(GameMemory* memory, GameInput* input, float64 dt, float64 time
     state->gameCamera = create_camera(cameras);
     state->light = {};
     state->light.camera = create_camera(cameras);
-    state->fireInterval = 1.0f;
+    state->fireInterval = 0.2f;
 
 #if defined(NETWORKING)
     isClient = 0;
