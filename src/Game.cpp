@@ -365,8 +365,8 @@ uint32 game_mode(GameState* state, GameInput* input, float64 dt, float64 time) {
   for(uint32 i = 0; i < state->bullets.size(); i++) {
     Bullet& bullet = state->bullets[i];
     if(bullet.valid) {
-      BulletResult bResult = update_bullet(ro, &bullet, dt);
-      if(bResult == BulletResult::BULLET_LIFETIME) {
+      BulletResult bResult = update_bullet(ro, &bullet, dt, state->player);
+      if(bResult != BulletResult::BULLET_NONE) {
 	destroy_bullet(ro, &bullet);
 	state->bullets.erase(state->bullets.begin());
 	i--;
@@ -460,7 +460,7 @@ int32 game_update(GameMemory* memory, GameInput* input, float64 dt, float64 time
     state->gameCamera = create_camera(cameras);
     state->light = {};
     state->light.camera = create_camera(cameras);
-    state->fireInterval = 0.2f;
+    state->fireInterval = 1.0f;
 
 #if defined(NETWORKING)
     isClient = 0;

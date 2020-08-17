@@ -626,6 +626,8 @@ void load_level(GameMemory* memory, RenderObjects* renderObjects, ModelInfo* mod
   file.read((char*)&count, sizeof(uint32));
   renderObjects->count = 0;
 
+  log_("count %d\n", count);
+
   ObjectDescriptor desc = {};
   for(uint32 i = 0; i < count; i++) {
     uint32 nameLen;

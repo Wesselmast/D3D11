@@ -29,7 +29,7 @@ Bullet spawn_bullet(RenderObjects* ro, ModelInfo* models, BulletDesc desc) {
   return { bullet, desc, true };
 }
 
-BulletResult update_bullet(RenderObjects* ro, Bullet* bullet, float32 dt) {
+BulletResult update_bullet(RenderObjects* ro, Bullet* bullet, float32 dt, uint32 player) {
   Transform t = get_object_transform(ro, bullet->ref);
   t.position = t.position + bullet->desc.direction * bullet->desc.speed;
   set_object_transform(ro, bullet->ref, t);
@@ -39,6 +39,14 @@ BulletResult update_bullet(RenderObjects* ro, Bullet* bullet, float32 dt) {
   if(bullet->currentLifeTime >= bullet->desc.lifeTime) {
     return BulletResult::BULLET_LIFETIME;
   }
+  uint32 outRef;
+  if(check_if_in_any_bounds(ro, outRef, t.position)) {
+    if(outRef != player && outRef != bullet->ref) {
+      ObjectDescriptor* desc = get_object_descriptor(ro, outRef);
+      return BulletResult::BULLET_HIT;
+    }
+  }
+
   return BulletResult::BULLET_NONE;
 }
 
