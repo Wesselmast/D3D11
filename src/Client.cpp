@@ -3,9 +3,6 @@ static Connection client;
 static uint32 otherPlayers[MAX_NUMBER_OF_CONNECTIONS];
 
 void client_connect(const IPEndPoint& ipEndPoint) {
-  initialize();
-  log_("successfully initialized winsock!\n");
-
   client.ipEndPoint = ipEndPoint;
 
   client.socket = create_socket(client.ipEndPoint.ipversion);
@@ -62,6 +59,4 @@ bool32 client_update(GameState* state) {
 void client_disconnect() {
   close_connection(client);
   log_("successfully closed socket!\n");
-
-  shutdown();
 }

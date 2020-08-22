@@ -2,14 +2,14 @@
 
 set config=%1
 
-set genericflags=-D_CRT_SECURE_NO_WARNINGS -Wall -Wno-unused-variable -c -D_GLFW_WIN32
+set genericflags=-D_CRT_SECURE_NO_WARNINGS -Wall -Wno-unused-variable -c -D_GLFW_WIN32 -DNETWORKING
 set dflags= %genericflags% -g -DDEBUG
 set rflags=%genericflags% -O2 -DRELEASE
 set dLflags=-g
 set rLflags=-Wl,-subsystem:windows
 set linkerpaths=-LLib\\10.0.17763.0\\um\\x86\\
 set includepaths=-IInclude\\10.0.17763.0\\ 
-set libraries=-lopengl32 -luser32 -lgdi32 -ld3d11 -lodbc32
+set libraries=-lopengl32 -luser32 -lgdi32 -ld3d11 -lodbc32 -lws2_32 -lwininet
 set compiler=clang++
 set caching=ccache
 

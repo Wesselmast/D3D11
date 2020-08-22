@@ -15,7 +15,6 @@ void disconnect_client(RenderObjects* ro, uint32 client) {
 }
 
 void server_startup(const IPEndPoint& ipEndPoint) {
-  initialize();
   log_("successfully initialized winsock!\n");
   
   Connection server = {};
@@ -211,5 +210,4 @@ void server_update(GameState* state) {
 
 void server_shutdown() {
   close_connection(serverBridge.connections[0]);
-  shutdown();
 }

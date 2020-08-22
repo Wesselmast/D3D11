@@ -2,15 +2,15 @@
 set config=%1
 IF "%1" == "" set config=debug
 
-IF EXIST .\bin\networking\%config%\ (
-  pushd .\bin\networking\%config%\
+IF EXIST .\bin\%config%\ (
+  pushd .\bin\%config%\
   echo.
   start Test.exe
   echo.
   popd
 )
-IF EXIST .\bin\networking\%config%\ (
-  pushd .\bin\networking\%config%\
+IF EXIST .\bin\%config%\ (
+  pushd .\bin\%config%\
   echo.
   start Test.exe
   echo.

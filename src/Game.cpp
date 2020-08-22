@@ -1,15 +1,18 @@
 #include "Game.h"
 #include "Camera.cpp"
 #include "GameCollision.cpp"
-#include "SQLServer.cpp"
+//#include "SQLServer.cpp"
 #include "Config.cpp"
 #include "GameLogic.cpp"
+#include "PHP.cpp"
 
 struct GameState {
   RenderObjects renderObjects;
   Cameras cameras;
 
-  SQLInfo sqlInfo;
+  // SQLInfo sqlInfo;
+
+  PHP php;
   AccountInfo accountInfo;
 
   uint32 editorCamera;
@@ -96,15 +99,51 @@ void render_imgui(GameMemory* memory, GameState* state) {
     ImGui::InputText("* Password", (char*)&(state->accountInfo.password), 128, ImGuiInputTextFlags_Password);
 
     if(ImGui::Button("Register")) {
-      if(register_account(state->accountInfo, &(state->sqlInfo))) {
+      char score[10];
+      _ltoa(state->accountInfo.score, score, 10);
+
+      char request[256];
+      strcpy(request, "type=register&username=");
+      strcat(request, state->accountInfo.username);
+      strcat(request, "&password=");
+      strcat(request, state->accountInfo.password);
+      strcat(request, "&initialScore=");
+      strcat(request, score);
+
+      int64 result = 0;
+      php_request_int(&(state->php), request, &result);
+
+      if(result) {
 	log_("successfully registered!\n");
+      }
+      else {
+	log_("this username is already taken!");
       }
     }
 
     if(ImGui::Button("Login")) {
-      if(login_account(state->accountInfo, &(state->sqlInfo))) {
-	log_("successfully logged in!\n");
+      char request[256];
+      strcpy(request, "type=login&username=");
+      strcat(request, state->accountInfo.username);
+      strcat(request, "&password=");
+      strcat(request, state->accountInfo.password);
+
+      php_request_int(&(state->php), request, &(state->accountInfo.id));
+      if(state->accountInfo.id > 0) {
+	char id[10];
+	_ltoa(state->accountInfo.id, id, 10);
+      
+	char scoreRequest[256];
+	strcpy(scoreRequest, "type=fetch_score&id=");
+	strcat(scoreRequest, id);
+	
+	php_request_int(&(state->php), scoreRequest, &(state->accountInfo.score));
+
+	log_("successfully logged in! Welcome %llu\n", state->accountInfo.score);
 	state->accountInfo.loggedin = true;
+      }
+      else {
+	log_("couldn't log in, combination username and password does not exist!");
       }
     }
 
@@ -256,8 +295,8 @@ void render_imgui(GameMemory* memory, GameState* state) {
     ImGui::Text("Welcome, %s", state->accountInfo.username);
 
     uint32 gamble = 2500;
-    if(ImGui::Button("Spend 2500 to spin the wheel!")) {
-      int64 score = atol(state->accountInfo.score);
+    if(ImGui::Button("Spend 2500 bucks to spin the wheel!")) {
+      int64& score = state->accountInfo.score;
 
       if(score - gamble >= 0) {
 	score -= gamble;
@@ -265,14 +304,27 @@ void render_imgui(GameMemory* memory, GameState* state) {
 	//what's it gonna be?!
 	score += rand() % gamble * 2;
 	
-	update_score(state->accountInfo, &(state->sqlInfo), score);
+	char strid[10];
+	_ltoa(state->accountInfo.id, strid, 10);
+	char strscore[10];
+	_ltoa(score, strscore, 10);
+
+	char request[256];
+	strcpy(request, "type=set_score&id=");
+	strcat(request, strid);
+	strcat(request, "&score=");
+	strcat(request, strscore);
+	
+	php_request_int(&(state->php), request, &(state->accountInfo.score));
       }
       else {
 	log_("You don't have enough money to spin! D:\n");
       }
     }
 
-    ImGui::Text("Score: %s", state->accountInfo.score);
+    char strscore[10];
+    _ltoa(state->accountInfo.score, strscore, 10);
+    ImGui::Text("Score: %s", strscore);
 
     ImGui::NewLine();
     if(ImGui::Button("Log out")) {
@@ -367,7 +419,7 @@ uint32 game_mode(GameState* state, GameInput* input, float64 dt, float64 time) {
 #if defined(NETWORKING)
 	for(uint32 c = 0; c < MAX_NUMBER_OF_CONNECTIONS; c++) {
 	  if(otherPlayers[c] == outRef || serverBridge.players[c] == outRef) {
-	    increase_score(state->accountInfo, &state->sqlInfo, 500);
+	    state->accountInfo.score += 500;
 	  }
 	} 
 #endif
@@ -381,8 +433,6 @@ uint32 game_mode(GameState* state, GameInput* input, float64 dt, float64 time) {
     }
   }
 
-  log_("SCORE: %llu\n", state->bullets.size());
-  
   Vec3 p = state->playerTransform.position;
   state->cameraPos = {p.x, 5.0f, p.z};
   state->cameraRot = { -pi() * 0.5f, 0.0f, 0.0f};
@@ -459,8 +509,13 @@ int32 game_update(GameMemory* memory, GameInput* input, float64 dt, float64 time
   if(!memory->isInitialized) {
     test_renderer();
 
+    initialize();
+    state->accountInfo = {};
+    php_connect(&(state->php));
+#if 0
     connect_sql(&(state->sqlInfo), pSQLConnectionStr);
-   
+#endif
+
     memory->offset = sizeof(GameState);
     assert_(memory->offset <= memory->size, 
 	    "Too little memory is used! %llu is needed and %llu is available!", 
@@ -535,7 +590,10 @@ int32 game_update(GameMemory* memory, GameInput* input, float64 dt, float64 time
   input->click = false;
 
   if(!res) { 
+    php_disconnect(&(state->php));
+#if 0
     disconnect_sql(&(state->sqlInfo));
+#endif
   }
   return res;
 }
@@ -544,5 +602,6 @@ void game_quit() {
 #if defined(NETWORKING)
   if(isServer) server_shutdown(); 
   if(isClient) client_disconnect();
+  shutdown();
 #endif
 }
