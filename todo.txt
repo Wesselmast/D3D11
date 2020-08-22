@@ -1,9 +1,9 @@
 TODO:
 
 Rendering:
-- Fix up viewports : ~
+- Fix up viewports, it's still not possible to resize the window
 - Shadows
-- 2D rendering. This should also get its own rendering pool (I think)
+- 2D rendering. This should also get its own rendering pool (I think??)
 - PBR
 - Multiple lights
 - Skeletal animation
@@ -13,27 +13,22 @@ Rendering:
 Math:
 - The bounds check is definately not right yet (looks like a scale issue?)
 - There should probably be some way to wireframe-represent the colliders
-- RayToScreen function to allow selecting objects with the mouse for both gameplay and for editing.
-  => THIS is added now, but maybe add an outline effect to show which object has been selected?  
-
 
 Login System:
-- Transfer SQL server to the actual server computer
 - Make sure two users cannot be logged in at the same time on the same account
 
 Networking:
 - Fix networking so that it works without delay for 4 players instead of just 2
+- Show bullets over the network
 
 Game:
 - Adding models:
-  - Cactus
   - Saloon
   - Wagon
   - Haybales
   - Dry grass
 - Adding gameplay:
-  - Shooting an object towards the mouse position
   - Drawing a 2d reticle at the mouse position
 
 Other:
-- Fix the annoying bug where typing in ImGui also sends events to the game / editor
+- Add a brush for painting foliage, could be pretty fancy B)
