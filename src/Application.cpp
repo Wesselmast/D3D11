@@ -14,6 +14,7 @@ struct GameInput {
   bool32 close;
   bool32 quit;
   bool32 alt;
+  bool32 shift;
   bool32 editorMode;
   bool32 fire;
   bool32 click;
@@ -50,10 +51,14 @@ struct GameState {
   Transform startTransform;
   uint32 player;
   Transform playerTransform;
+  
   float32 playerSpeed;  
+  float32 playerWalkSpeed;  
+  float32 playerRunSpeed;  
   
   std::vector<Bullet> bullets;
   float32 fireInterval;
+  uint32 maxBullets;
 };
 
 const uint32 AMOUNT_OF_TEXTURES = 20;
@@ -110,7 +115,6 @@ int32 app_update(GameMemory* memory, GameInput* input, float64 dt, float64 time)
     state->gameCamera = create_camera(cameras);
     state->light = {};
     state->light.camera = create_camera(cameras);
-    state->fireInterval = 0.2f;
 
 #if defined(NETWORKING)
     isClient = 0;

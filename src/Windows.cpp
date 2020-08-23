@@ -122,8 +122,10 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     bool32 wasDown = ((lParam & (1 << 30)) != 0);
     bool32 isDown  = ((lParam & (1 << 31)) == 0);
     
+    //these are events always work
     switch(wParam) {
-    case VK_MENU: input.alt  = isDown; return 0;
+    case VK_MENU:  input.alt   = isDown; return 0;
+    case VK_SHIFT: input.shift = isDown; return 0;
     }
 
     if(wasDown == isDown) return 0;
@@ -131,6 +133,7 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
       input.quit = true;
     }
 
+    //these events only work if not focusing imgui elements
     bool32 fDown = isDown & !imgui_focusing_anything();
     switch(wParam) {
     case 'W': input.up = fDown;          return 0;
