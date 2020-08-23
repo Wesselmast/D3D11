@@ -32,3 +32,4 @@ Game:
 
 Other:
 - Add a brush for painting foliage, could be pretty fancy B)
+- Really get rid of all of those static global variables. They will produce bugs in the future
