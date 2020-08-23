@@ -10,6 +10,10 @@ struct Bridge {
 static Bridge serverBridge;
 
 void disconnect_client(RenderObjects* ro, uint32 client) {
+  Packet packet;
+  packet_insert(packet, PacketType::SERVER_DISCONNECT);
+  socket_send_packet(serverBridge.connections[client].socket, packet);
+
   close_connection(serverBridge.connections[client]);
   destroy_object(ro, serverBridge.players[client]);
 }
@@ -33,9 +37,11 @@ void server_startup(const IPEndPoint& ipEndPoint) {
   
   serverBridge.descriptors[0] = socketDesc;
   serverBridge.connections[0] = server;
+
+  connected = true;
 }
 
-void server_update(GameState* state) {
+uint32 server_update(GameState* state) {
   RenderObjects* ro = &(state->renderObjects);
   serverBridge.players[0] = state->player;
   
@@ -49,7 +55,7 @@ void server_update(GameState* state) {
       WSAPOLLFD& socketDesc = tempDescs[0];
       if(socketDesc.revents & POLLRDNORM) {
 	Connection newConnection;
-	if(!accept_connection(server, newConnection)) return;
+	if(!accept_connection(server, newConnection)) return 0;
 	log_("socket has accepted a new connection!\n");
 	
 	uint32 index = 1;
@@ -58,7 +64,7 @@ void server_update(GameState* state) {
 	  if(index > MAX_NUMBER_OF_CONNECTIONS) {
 	    log_("can't accept another connection!\n");
 	    close_connection(newConnection);
-	    return;
+	    return 0;
 	  }  
 	}
 
@@ -82,7 +88,7 @@ void server_update(GameState* state) {
 	    if(!socket_send_packet(newConnection.socket, packet)) {
 	      log_("Connection lost port %d, Closing..\n", newConnection.ipEndPoint.port);
 	      disconnect_client(ro, index);
-	      return;
+	      return 0;
 	    }
 	  }
 	}
@@ -101,7 +107,7 @@ void server_update(GameState* state) {
 	    if(!socket_send_packet(c.socket, packet)) {
 	      log_("Connection lost port %d, Closing..\n", c.ipEndPoint.port);
 	      disconnect_client(ro, i);
-	      return;
+	      return 0;
 	    }
 	  }
 	}
@@ -206,8 +212,15 @@ void server_update(GameState* state) {
   //   packet_extract(packet, buf); 
   //   log_("%d, %d, %d, %s\n", a, b, c, buf);
   // }
+  return 0;
 }
 
-void server_shutdown() {
+void server_shutdown(RenderObjects* ro) {
+  for(uint32 i = 1; i < serverBridge.count; i++) {
+    Connection& c = serverBridge.connections[i];
+    if(!c.valid) continue;
+    disconnect_client(ro, i);
+  }
   close_connection(serverBridge.connections[0]);
+  connected = false;
 }

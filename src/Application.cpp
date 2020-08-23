@@ -11,7 +11,7 @@ struct GameInput {
   bool32 left;
   bool32 down;
   bool32 right;
-  bool32 close;
+  bool32 pauseMenu;
   bool32 quit;
   bool32 alt;
   bool32 shift;
@@ -59,6 +59,12 @@ struct GameState {
   std::vector<Bullet> bullets;
   float32 fireInterval;
   uint32 maxBullets;
+
+  bool32 showMainMenu;
+  bool32 showPauseMenu;
+  bool32 showNetworking;
+
+  bool32 playGame;
 };
 
 const uint32 AMOUNT_OF_TEXTURES = 20;
@@ -103,7 +109,6 @@ int32 app_update(GameMemory* memory, GameInput* input, float64 dt, float64 time)
   if(!memory->isInitialized) {
     test_renderer();
 
-    initialize();
     state->accountInfo = {};
     php_connect(&(state->php));
 
@@ -117,6 +122,7 @@ int32 app_update(GameMemory* memory, GameInput* input, float64 dt, float64 time)
     state->light.camera = create_camera(cameras);
 
 #if defined(NETWORKING)
+    initialize();
     isClient = 0;
     isServer = 0;
 #endif
@@ -141,42 +147,32 @@ int32 app_update(GameMemory* memory, GameInput* input, float64 dt, float64 time)
     memory->isInitialized = true;
 
     load_level(memory, ro, models, "res\\levels\\try.level");
-    game_start(state);
   }
   
-#if defined(NETWORKING)
-  if(isServer) server_update(state);
-  if(isClient) {
-    if(!client_update(state)) {
-      client_disconnect();
-    }
-  }
-#endif
-  
-  uint32 res;
+  uint32 res = 0;
   if(state->editorMode) {
-    res = editor_update(state, input, dt, time);
+    res |= editor_update(state, input, dt, time);
     render_loop(get_view_projection(cameras, state->editorCamera), &(state->light));
   }
   else {
-    res = game_update(state, input, dt, time);
+    res |= game_update(state, input, dt, time);
     render_loop(get_view_projection(cameras, state->gameCamera), &(state->light));
   }
   update_render_objects(ro, textures);
 
   start_ImGUI();
   if(state->editorMode) {
-    render_editor_ui(memory, state);
+    res |= render_editor_ui(memory, state);
   }
   else {
-    render_game_ui(memory, state);
+    res |= render_game_ui(memory, state);
   }
   end_ImGUI();
 
   if(input->editorMode != state->lastEditorMode && input->editorMode) {
     state->editorMode = !state->editorMode;
     if(!state->editorMode) {
-      reset_player_position(state);      
+      state->playerTransform = state->startTransform;
     }
   }
 
@@ -184,16 +180,20 @@ int32 app_update(GameMemory* memory, GameInput* input, float64 dt, float64 time)
   state->lastMousePosition = input->rawMousePosition;
   input->click = false;
 
-  if(!res) { 
+  res |= input->quit;
+
+  if(res) { 
     php_disconnect(&(state->php));
+#if defined(NETWORKING)
+    if(isServer) server_shutdown(ro); 
+    if(isClient) client_disconnect(ro);
+#endif
   }
   return res;
 }
 
 void app_quit() {
 #if defined(NETWORKING)
-  if(isServer) server_shutdown(); 
-  if(isClient) client_disconnect();
   shutdown();
 #endif
 }

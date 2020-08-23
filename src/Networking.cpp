@@ -2,6 +2,8 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 
+static bool32 connected; //I should probably get rid of this sometime soon
+
 #define wsa_fail(errorcode) assert_(false, "WSA ERROR: %d", errorcode);
 
 #include "Packet.cpp"
@@ -177,10 +179,7 @@ uint32 create_socket(IPVersion version) {
 }
 
 void close_socket(uint64& socket) {
-  int32 result = closesocket(socket);
-  if(result) {
-    wsa_fail(WSAGetLastError());
-  }
+  closesocket(socket);
   socket = INVALID_SOCKET;
 }
 
@@ -296,7 +295,7 @@ bool32 socket_send(uint64& socket, const void* data, int32 length) {
     
     if(bytesSent == SOCKET_ERROR) {
       if(bytesSent != WSAEWOULDBLOCK) {
-	log_("ewwor!\n");
+	log_("WSA Exited with %d\n", bytesSent);
 	return 0;	    
       }
     }    
@@ -319,9 +318,8 @@ bool32 socket_recieve(uint64& socket, void* data, int32 length) {
     if(bytesRecieved == SOCKET_ERROR) {
       int32 error = WSAGetLastError();
       if(error != WSAEWOULDBLOCK) {
-	log_("BLOCKED! Something is wrong D:\n");
-	wsa_fail(error);
-	return 0;	    
+	log_("WSA Exited with %d\n", error);
+	return 0;
       }
     }
     totalBytesRecieved += bytesRecieved; 

@@ -1,10 +1,11 @@
 #pragma once
 
-void render_editor_ui(GameMemory* memory, GameState* state) {
+uint32 render_editor_ui(GameMemory* memory, GameState* state) {
+  bool32 quit = 0;
   RenderObjects* ro = &(state->renderObjects);
 
   uint32 obj;
-  if(state->anySelected) {
+  if(state->anySelected) { //manipulate objects
     ObjectDescriptor* descPtr = get_object_descriptor(ro, state->selected); 
     ImGui::Begin(descPtr->name);
     
@@ -97,40 +98,42 @@ void render_editor_ui(GameMemory* memory, GameState* state) {
     ImGui::End();
   }
     
-  ImGui::Begin("World manager");
-
-  bool open_spawn_popup = ImGui::Button("Spawn");
-  if(open_spawn_popup) {
-    ImGui::OpenPopup("SpawnWindow");
-  }
-  
-  if(ImGui::BeginPopup("SpawnWindow")) {
-    for(uint32 i = 0; i < AMOUNT_OF_MODELS; i++) {
-      if(!models[i].vertices) break;
-      ImGui::SameLine();
-      if(ImGui::Button(models[i].name)) {
-	create_model(ro, models, i);
-	break;
-	ImGui::CloseCurrentPopup();
-      }
-      if(i % 2 == 0 && i != 0) {
-	ImGui::NewLine();
-      }
+  { //Manage the world (save levels, load levels, spawning objects)
+    ImGui::Begin("World manager");
+    
+    bool open_spawn_popup = ImGui::Button("Spawn");
+    if(open_spawn_popup) {
+      ImGui::OpenPopup("SpawnWindow");
     }
-    ImGui::EndPopup();
-  }
-  if(ImGui::Button("Save level")) {
-    save_level(ro, "res\\levels\\try.level");
-  }
-  if(ImGui::Button("Load level")) {
-    state->anySelected = false;
-    load_level(memory, ro, models, "res\\levels\\try.level");
-    game_start(state);
-  }
+    
+    if(ImGui::BeginPopup("SpawnWindow")) {
+      for(uint32 i = 0; i < AMOUNT_OF_MODELS; i++) {
+	if(!models[i].vertices) break;
+	ImGui::SameLine();
+	if(ImGui::Button(models[i].name)) {
+	  create_model(ro, models, i);
+	  ImGui::CloseCurrentPopup();
+	  break;
+	}
+	if(i % 2 == 0 && i != 0) {
+	  ImGui::NewLine();
+	}
+      }
+      ImGui::EndPopup();
+    }
+    if(ImGui::Button("Save level")) {
+      save_level(ro, "res\\levels\\try.level");
+    }
+    if(ImGui::Button("Load level")) {
+      state->anySelected = false;
+      load_level(memory, ro, models, "res\\levels\\try.level");
+      game_start(state);
+    }
+    
+    ImGui::End();
+  }    
 
-  ImGui::End();
- 
-  {
+  { //Move around the single point light!!
     ImGui::Begin("Light");
     
     ImGui::Text("Position");
@@ -141,30 +144,7 @@ void render_editor_ui(GameMemory* memory, GameState* state) {
     
     ImGui::End();
   }
-
-#if defined(NETWORKING)
-  ImGui::Begin("Networking");
-  
-  ImGui::InputText("ip", targetConnectionIP, 128);
-  ImGui::SameLine();
-  ImGui::InputInt("port", &targetConnectionPort);
-
-  if(ImGui::Button("Start server")) {
-    if(isServer) server_shutdown();
-    if(isClient) client_disconnect();
-    isServer = 1;
-    isClient = 0;    
-    server_startup(create_ip_endpoint(targetConnectionIP, (uint16)targetConnectionPort));
-  }
-  if(ImGui::Button("Start client")) {
-    if(isServer) server_shutdown();
-    if(isClient) client_disconnect();
-    isServer = 0;
-    isClient = 1;    
-    client_connect(create_ip_endpoint(targetConnectionIP, (uint16)targetConnectionPort));
-  }  
-  ImGui::End();
-#endif
+  return quit;
 }
 
 uint32 editor_update(GameState* state, GameInput* input, float64 dt, float64 time) {
@@ -213,6 +193,6 @@ uint32 editor_update(GameState* state, GameInput* input, float64 dt, float64 tim
     }
   }
   //log_("dt: %fms, fps: %f\n", dt, 1.0f/dt); 
-  return !input->quit;
+  return 0;
 }
 

@@ -124,8 +124,9 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     
     //these are events always work
     switch(wParam) {
-    case VK_MENU:  input.alt   = isDown; return 0;
-    case VK_SHIFT: input.shift = isDown; return 0;
+    case VK_MENU:   input.alt       = isDown; return 0;
+    case VK_SHIFT:  input.shift     = isDown; return 0;
+    case VK_ESCAPE: input.pauseMenu = isDown; return 0;
     }
 
     if(wasDown == isDown) return 0;
@@ -141,7 +142,6 @@ LRESULT CALLBACK window_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     case 'S': input.down = fDown;        return 0;
     case 'D': input.right = fDown;       return 0;
     case 'H': input.editorMode = fDown;  return 0;
-    case VK_ESCAPE:  input.close = fDown; return 0;
     }
     return 0;
   }
@@ -284,7 +284,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
       DispatchMessage(&message);
     }
     
-    if(!app_update(&gameMemory, &input, dt, time)) PostQuitMessage(0);
+    if(app_update(&gameMemory, &input, dt, time)) PostQuitMessage(0);
     swap_buffers(true);
     clear_buffer(0.5f, 0.0f, 0.5f, 1.0f);
 

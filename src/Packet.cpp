@@ -6,7 +6,8 @@ enum PacketType {
   INVALID,
   PLAYER_TRANSFORM,
   NEW_CONNECTION,
-  BULLET_UPDATE
+  BULLET_UPDATE,
+  SERVER_DISCONNECT
 };
 
 struct Packet {
