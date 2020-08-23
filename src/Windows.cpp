@@ -1,5 +1,5 @@
 #include "Windows.h"
-#include "Game.cpp"
+#include "Application.cpp"
 
 #include <windows.h>
 #include <cstdlib>
@@ -281,7 +281,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
       DispatchMessage(&message);
     }
     
-    if(!game_update(&gameMemory, &input, dt, time)) PostQuitMessage(0);
+    if(!app_update(&gameMemory, &input, dt, time)) PostQuitMessage(0);
     swap_buffers(true);
     clear_buffer(0.5f, 0.0f, 0.5f, 1.0f);
 
@@ -289,7 +289,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCmdL
     time += dt;
   }
  quit:
-  game_quit();
+  app_quit();
   close_window(window, hdc, hrc);
   return 0;
 }

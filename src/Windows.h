@@ -59,7 +59,6 @@ uint8* allocate(GameMemory* memory, uint64 size) {
   return result;
 }
   
-#include "Utility.cpp"
 #include "Math.cpp"
 #include "File.cpp"
 #include "ImGUIImpl.cpp"
