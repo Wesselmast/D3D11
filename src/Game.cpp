@@ -1,5 +1,13 @@
 #pragma once
 
+#if defined(NETWORKING)
+#include "Server.cpp"
+#include "Client.cpp"
+
+static char targetConnectionIP[128];
+static int32 targetConnectionPort;
+#endif
+
 void game_start(GameState* state);
 void game_end(GameState* state);
 
@@ -154,19 +162,17 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
     ImGui::InputInt("port", &targetConnectionPort);
     
     if(ImGui::Button("Start server")) {
-      if(isServer) server_shutdown(ro);
-      if(isClient) client_disconnect(ro);
-      isServer = 1;
-      isClient = 0;    
-      server_startup(create_ip_endpoint(targetConnectionIP, (uint16)targetConnectionPort));
+      if(state->server.valid) server_shutdown(&state->server, ro);
+      if(state->client.valid) client_disconnect(&state->client, ro);
+
+      server_startup(&state->server, create_ip_endpoint(targetConnectionIP, (uint16)targetConnectionPort));
       state->showNetworking = false;
     }
     if(ImGui::Button("Start client")) {
-      if(isServer) server_shutdown(ro);
-      if(isClient) client_disconnect(ro);
-      isServer = 0;
-      isClient = 1;    
-      client_connect(create_ip_endpoint(targetConnectionIP, (uint16)targetConnectionPort));
+      if(state->server.valid) server_shutdown(&state->server, ro);
+      if(state->client.valid) client_disconnect(&state->client, ro);
+
+      client_connect(&state->client, create_ip_endpoint(targetConnectionIP, (uint16)targetConnectionPort));
       state->showNetworking = false;
     }  
     ImGui::End();
@@ -209,8 +215,8 @@ void game_end(GameState* state) {
   set_camera_transform(cameras, state->gameCamera, vec3_from_scalar(0.0f), vec3_from_scalar(0.0f));
 
 #if defined(NETWORKING)
-  if(isServer) server_shutdown(ro); 
-  if(isClient) client_disconnect(ro);
+  if(state->server.valid) server_shutdown(&state->server, ro); 
+  if(state->client.valid) client_disconnect(&state->client, ro);
 #endif
 }
 
@@ -220,14 +226,16 @@ uint32 game_update(GameState* state, GameInput* input, float64 dt, float64 time)
   if(!state->playGame) return 0;
 
 #if defined(NETWORKING)
-  if(connected) {
-    bool32 res = 0;
-    if(isServer) res |= server_update(state);
-    if(isClient) res |= client_update(state);
-    if(res) {
-      state->showMainMenu = true;
-      game_end(state);
-    }
+  if(state->server.valid) {
+    server_update(state);
+  }
+  else if(state->client.valid) {
+    client_update(state);
+  }
+  else {
+    state->showMainMenu = true;
+    game_end(state);
+    return 0;
   }
 #endif
 
@@ -277,7 +285,7 @@ uint32 game_update(GameState* state, GameInput* input, float64 dt, float64 time)
       if(bResult == BulletResult::BULLET_HIT) {
 #if defined(NETWORKING)
 	for(uint32 c = 0; c < MAX_NUMBER_OF_CONNECTIONS; c++) {
-	  if(otherPlayers[c] == outRef || serverBridge.players[c] == outRef) {
+	  if(state->client.otherPlayers[c] == outRef || state->server.players[c] == outRef) {
 	    state->accountInfo.score += 500;
 	  }
 	} 

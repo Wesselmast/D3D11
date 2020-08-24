@@ -6,6 +6,10 @@
 #include "GameLogic.cpp"
 #include "PHP.cpp"
 
+#if defined(NETWORKING)
+#include "Networking.cpp"
+#endif
+
 struct GameInput {
   bool32 up;
   bool32 left;
@@ -65,26 +69,17 @@ struct GameState {
   bool32 showNetworking;
 
   bool32 playGame;
+
+#if defined(NETWORKING)
+  Client client;
+  Server server;
+#endif
 };
 
 const uint32 AMOUNT_OF_TEXTURES = 20;
 const uint32 AMOUNT_OF_MODELS = 20;
-
 static Texture textures[AMOUNT_OF_TEXTURES];
 static ModelInfo models[AMOUNT_OF_MODELS];
-
-#if defined(NETWORKING)
-#include "Networking.cpp"
-#include "Server.cpp"
-#include "Client.cpp"
-#endif
-
-#if defined(NETWORKING)
-static bool32 isServer;
-static bool32 isClient;
-static char targetConnectionIP[128];
-static int32 targetConnectionPort;
-#endif
 
 #include "Game.cpp"
 #include "Editor.cpp"
@@ -123,8 +118,8 @@ int32 app_update(GameMemory* memory, GameInput* input, float64 dt, float64 time)
 
 #if defined(NETWORKING)
     initialize();
-    isClient = 0;
-    isServer = 0;
+    state->client = {};
+    state->server = {};
 #endif
 
     import_texture(memory, textures, "res\\textures\\T_Pixel.bmp",        0);
@@ -185,8 +180,8 @@ int32 app_update(GameMemory* memory, GameInput* input, float64 dt, float64 time)
   if(res) { 
     php_disconnect(&(state->php));
 #if defined(NETWORKING)
-    if(isServer) server_shutdown(ro); 
-    if(isClient) client_disconnect(ro);
+    if(state->server.valid) server_shutdown(&state->server, ro); 
+    if(state->client.valid) client_disconnect(&state->client, ro);
 #endif
   }
   return res;

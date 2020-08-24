@@ -2,11 +2,11 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 
-static bool32 connected; //I should probably get rid of this sometime soon
-
 #define wsa_fail(errorcode) assert_(false, "WSA ERROR: %d", errorcode);
 
 #include "Packet.cpp"
+
+const uint32 MAX_NUMBER_OF_CONNECTIONS = 4;
 
 enum SocketOption {
    TCP_NO_DELAY,
@@ -30,6 +30,21 @@ struct Connection {
   uint64 socket; 
   IPEndPoint ipEndPoint; 
   bool32 valid = 0;
+};
+
+struct Client {
+  Connection connection;
+  uint32 otherPlayerCount;
+  uint32 otherPlayers[MAX_NUMBER_OF_CONNECTIONS];
+  bool32 valid;
+};
+
+struct Server {
+  Connection connections[MAX_NUMBER_OF_CONNECTIONS];
+  WSAPOLLFD  descriptors[MAX_NUMBER_OF_CONNECTIONS];
+  uint32 players[MAX_NUMBER_OF_CONNECTIONS];
+  uint32 count = 1;
+  bool32 valid;
 };
 
 void print_bytes(const IPEndPoint& endPoint) {

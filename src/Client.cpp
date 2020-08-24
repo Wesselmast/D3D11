@@ -1,41 +1,41 @@
-static Connection client;
+#pragma once
 
-static uint32 otherPlayerCount;
-static uint32 otherPlayers[MAX_NUMBER_OF_CONNECTIONS];
+void client_connect(Client* client, const IPEndPoint& ipEndPoint) {
+  Connection& c = client->connection;
 
-void client_connect(const IPEndPoint& ipEndPoint) {
-  client.ipEndPoint = ipEndPoint;
+  c.ipEndPoint = ipEndPoint;
 
-  client.socket = create_socket(client.ipEndPoint.ipversion);
+  c.socket = create_socket(c.ipEndPoint.ipversion);
   log_("successfully created socket!\n");
 
-  set_socket_blocking(client.socket, 1); //temporarily setting to blocking sockets
+  set_socket_blocking(c.socket, 1); //temporarily setting to blocking sockets
   log_("nonblocking!\n");
 
-  attempt_connection(client);
+  attempt_connection(c);
   log_("client is successfully connected!\n");
 
-  connected = true;
-  otherPlayerCount = 0;
+  client->otherPlayerCount = 0;
+  client->valid = true;
 }
 
-void client_disconnect(RenderObjects* ro) {
-  for(uint32 i = 0; i < otherPlayerCount; i++) {
-    destroy_object(ro, otherPlayers[i]);
+void client_disconnect(Client* client, RenderObjects* ro) {
+  for(uint32 i = 0; i < client->otherPlayerCount; i++) {
+    destroy_object(ro, client->otherPlayers[i]);
   }
-  otherPlayerCount = 0;
-  close_connection(client);
-  connected = false;
+  client->otherPlayerCount = 0;
+  close_connection(client->connection);
+  client->valid = false;
 }
 
 bool32 client_update(GameState* state) {
-  if(!connected) return 0;
-
+  Client* client = &(state->client); 
   RenderObjects* ro = &(state->renderObjects);
+
   {
     Packet packet;
-    if(!socket_recieve_packet(client.socket, packet)) {
+    if(!socket_recieve_packet(client->connection.socket, packet)) {
       log_("Looks like we lost connection D:\n"); 
+      client_disconnect(client, ro);      
       return 1;
     }
 
@@ -49,17 +49,19 @@ bool32 client_update(GameState* state) {
       packet_extract(packet, index);
       packet_extract(packet, t.position); 
       packet_extract(packet, t.rotation); 
-      set_object_transform(ro, otherPlayers[index], t);
+      set_object_transform(ro, client->otherPlayers[index], t);
       break;
     }
     case PacketType::NEW_CONNECTION: {
       uint32 newConnection;
       packet_extract(packet, newConnection);
-      otherPlayers[newConnection] = create_player(ro, models, true);
-      otherPlayerCount++;
+      client->otherPlayers[newConnection] = create_player(ro, models, true);
+      client->otherPlayerCount++;
       break;
     }
     case PacketType::SERVER_DISCONNECT: {
+      log_("wadwd");
+      client_disconnect(client, ro);      
       return 1;
     }
     default: log_("Sent package has no server-side implementation!");
@@ -70,7 +72,8 @@ bool32 client_update(GameState* state) {
     packet_insert(packet, PacketType::PLAYER_TRANSFORM);
     packet_insert(packet, state->playerTransform.position);
     packet_insert(packet, state->playerTransform.rotation);
-    if(!socket_send_packet(client.socket, packet)) {
+    if(!socket_send_packet(client->connection.socket, packet)) {
+      client_disconnect(client, ro);      
       return 1;
     }
   }
