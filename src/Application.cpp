@@ -68,6 +68,7 @@ struct GameState {
   bool32 showPauseMenu;
   bool32 showNetworking;
 
+  bool32 startGame;
   bool32 playGame;
 
 #if defined(NETWORKING)
@@ -83,6 +84,9 @@ static ModelInfo models[AMOUNT_OF_MODELS];
 
 #include "Game.cpp"
 #include "Editor.cpp"
+
+void render_popup_windows() {
+}
 
 void import_texture(GameMemory* memory, Texture* textures, const char* path, uint32 index) {
   Bitmap bmp = {};
@@ -115,6 +119,7 @@ int32 app_update(GameMemory* memory, GameInput* input, float64 dt, float64 time)
     state->gameCamera = create_camera(cameras);
     state->light = {};
     state->light.camera = create_camera(cameras);
+    state->showMainMenu = false;
 
 #if defined(NETWORKING)
     initialize();

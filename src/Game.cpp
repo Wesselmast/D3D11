@@ -44,13 +44,13 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
       php_request_int(&(state->php), request, &result);
 
       if(result) {
-	log_("successfully registered!\n");
+	ImGui::OpenPopup("SuccessfulRegPopup");
       }
       else {
-	log_("this username is already taken!");
+	ImGui::OpenPopup("UsernameTakenPopup");
       }
     }
-
+   
     if(ImGui::Button("Login")) {
       char request[256];
       strcpy(request, "type=login&username=");
@@ -74,12 +74,18 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
 	state->showMainMenu = true;
       }
       else {
-	log_("couldn't log in, combination username and password does not exist!");
+	ImGui::OpenPopup("LoginFailedPopup");
       }
     }
 
+    ImVec2 middle(windowWidth  * 0.5f, windowHeight * 0.5f);
+    imgui_popup_window("UsernameTakenPopup", middle, 
+		       "This username is already taken!");
+    imgui_popup_window("SuccessfulRegPopup", middle, 
+		       "Successfully registered!");
+    imgui_popup_window("LoginFailedPopup",   middle, 
+		       "couldn't log in, combination username and password does not exist!");
     ImGui::End();
-    return quit;
   }
 
   if(state->showMainMenu) { // Main Menu!
@@ -92,7 +98,12 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
       
       ImGui::Begin("Main Menu", 0, imgui_static_window_flags());
       
-      state->showMainMenu = !ImGui::Button("PRACTICE", bts);
+      if(ImGui::Button("PRACTICE", bts)) {
+	state->showMainMenu = false;
+	state->startGame = true;
+	
+	practice mode doesn't work ride now ;p
+      }
       ImGui::NewLine();
       state->showNetworking = ImGui::Button("PLAY ONLINE", bts);
       ImGui::NewLine();
@@ -113,8 +124,6 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
       
       ImGui::End();
     }
-    
-    return quit;
   }  
 
   if(state->showPauseMenu) { // Pause Menu!
@@ -149,13 +158,11 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
       
       ImGui::End();
     }
-    
-    return quit;
   }
 
 #if defined(NETWORKING)
   if(state->showNetworking) { //Connect to others via IP
-    ImGui::Begin("Networking");
+    ImGui::Begin("Networking", 0, imgui_default_window_flags());
     
     ImGui::InputText("ip", targetConnectionIP, 128);
     ImGui::SameLine();
@@ -167,6 +174,7 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
 
       server_startup(&state->server, create_ip_endpoint(targetConnectionIP, (uint16)targetConnectionPort));
       state->showNetworking = false;
+      state->startGame = true;
     }
     if(ImGui::Button("Start client")) {
       if(state->server.valid) server_shutdown(&state->server, ro);
@@ -174,14 +182,14 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
 
       client_connect(&state->client, create_ip_endpoint(targetConnectionIP, (uint16)targetConnectionPort));
       state->showNetworking = false;
+      state->startGame = true;
     }  
     ImGui::End();
-
-    return quit;
   }
 #endif
 
-  if(!state->playGame) {
+  if(!state->playGame && state->startGame) {
+    state->showMainMenu = false;
     game_start(state);
   }
 
