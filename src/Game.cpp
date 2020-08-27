@@ -97,19 +97,16 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
       ImGui::SetNextWindowSize(nws);
       
       ImGui::Begin("Main Menu", 0, imgui_static_window_flags());
-      
-      if(ImGui::Button("PRACTICE", bts)) {
-	state->showMainMenu = false;
-	state->startGame = true;
-	
-	practice mode doesn't work ride now ;p
-      }
+
+      state->practiceMode = ImGui::Button("PRACTICE", bts);
       ImGui::NewLine();
       state->showNetworking = ImGui::Button("PLAY ONLINE", bts);
       ImGui::NewLine();
       quit = ImGui::Button("QUIT GAME", bts);
       
       state->showMainMenu &= !state->showNetworking;
+      state->showMainMenu &= !state->practiceMode;
+      state->startGame |= state->practiceMode;
       
       ImGui::End();
     }
@@ -213,7 +210,9 @@ void game_start(GameState* state) {
 
 void game_end(GameState* state) {
   state->playGame = false;
-  
+  state->startGame = false;
+  state->practiceMode = false;
+
   RenderObjects* ro = &(state->renderObjects);
   Cameras* cameras  = &(state->cameras);
 
@@ -240,7 +239,7 @@ uint32 game_update(GameState* state, GameInput* input, float64 dt, float64 time)
   else if(state->client.valid) {
     client_update(state);
   }
-  else {
+  else if(!state->practiceMode) {
     state->showMainMenu = true;
     game_end(state);
     return 0;

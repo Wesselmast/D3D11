@@ -71,6 +71,8 @@ struct GameState {
   bool32 startGame;
   bool32 playGame;
 
+  bool32 practiceMode;
+
 #if defined(NETWORKING)
   Client client;
   Server server;
