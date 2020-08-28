@@ -192,8 +192,8 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
 
   if(state->playGame) {
     { //Hitpoints!
-      ImGui::SetNextWindowPos(ImVec2(0, windowHeight - 175));
-      ImGui::SetNextWindowSize(ImVec2(175, 50));
+      ImGui::SetNextWindowPos(ImVec2(0, windowHeight - 100));
+      ImGui::SetNextWindowSize(ImVec2(200, 50));
       ImGui::Begin("HitpointBar", 0, imgui_static_noinput_window_flags());
       
       ImGui::Text("Hitpoints of %s", state->accountInfo.username);
