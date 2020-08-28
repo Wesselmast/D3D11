@@ -19,7 +19,7 @@ Login System:
 
 Networking:
 - Fix networking so that it works without delay for 4 players instead of just 2
-- Show bullets over the network
+- Add a spectator mode when the players are finished
 
 Game:
 - Adding models:
@@ -35,5 +35,6 @@ Other:
 - Really get rid of all of those static global variables. They will produce bugs in the future: ~
 
 Top priority:
-- Full game loop
+- Full game loop : ~ almost there!
+- Show scoreboard after the game is finished
 - Shadows

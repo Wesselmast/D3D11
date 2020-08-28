@@ -64,6 +64,8 @@ struct GameState {
   float32 fireInterval;
   uint32 maxBullets;
 
+  int32 hitpoints;
+
   bool32 showMainMenu;
   bool32 showPauseMenu;
   bool32 showNetworking;
@@ -72,6 +74,7 @@ struct GameState {
   bool32 playGame;
 
   bool32 practiceMode;
+  bool32 networkMode;
 
 #if defined(NETWORKING)
   Client client;

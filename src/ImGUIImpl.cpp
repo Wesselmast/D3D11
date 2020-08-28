@@ -11,6 +11,12 @@ ImGuiWindowFlags imgui_default_window_flags() {
   return flags;
 }
 
+ImGuiWindowFlags imgui_noinput_window_flags() {
+  ImGuiWindowFlags flags = imgui_default_window_flags();
+  flags |= ImGuiWindowFlags_NoInputs;
+  return flags;
+}
+
 ImGuiWindowFlags imgui_static_window_flags() {
   ImGuiWindowFlags flags = imgui_default_window_flags();
 
@@ -19,6 +25,12 @@ ImGuiWindowFlags imgui_static_window_flags() {
   flags |= ImGuiWindowFlags_NoMove;
   flags |= ImGuiWindowFlags_NoScrollbar;
   flags |= ImGuiWindowFlags_NoCollapse;
+  return flags;
+}
+
+ImGuiWindowFlags imgui_static_noinput_window_flags() {
+  ImGuiWindowFlags flags = imgui_static_window_flags();
+  flags |= ImGuiWindowFlags_NoInputs;
   return flags;
 }
 

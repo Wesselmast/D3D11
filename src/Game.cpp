@@ -69,7 +69,7 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
 	
 	php_request_int(&(state->php), scoreRequest, &(state->accountInfo.score));
 
-	log_("successfully logged in! Welcome %llu\n", state->accountInfo.score);
+	log_("successfully logged in! Welcome %lld\n", state->accountInfo.score);
 	state->accountInfo.loggedin = true;
 	state->showMainMenu = true;
       }
@@ -117,7 +117,7 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
       ImGui::Begin("Corner Greetings", 0, imgui_static_window_flags());
       
       ImGui::Text("Welcome, %s", state->accountInfo.username);
-      ImGui::Text("You have %llu bucks!", state->accountInfo.score);
+      ImGui::Text("You have %lld bucks!", state->accountInfo.score);
       
       ImGui::End();
     }
@@ -151,7 +151,7 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
       ImGui::Begin("Corner Greetings", 0, imgui_static_window_flags());
       
       ImGui::Text("Welcome, %s", state->accountInfo.username);
-      ImGui::Text("You have %llu bucks!", state->accountInfo.score);
+      ImGui::Text("You have %lld bucks!", state->accountInfo.score);
       
       ImGui::End();
     }
@@ -190,6 +190,19 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
     game_start(state);
   }
 
+  if(state->playGame) {
+    { //Hitpoints!
+      ImGui::SetNextWindowPos(ImVec2(0, windowHeight - 175));
+      ImGui::SetNextWindowSize(ImVec2(175, 50));
+      ImGui::Begin("HitpointBar", 0, imgui_static_noinput_window_flags());
+      
+      ImGui::Text("Hitpoints of %s", state->accountInfo.username);
+      ImGui::SliderInt("Hitpoints", &(state->hitpoints), 0, 10);
+      
+      ImGui::End();
+    }
+    
+  }
   return quit;
 }
 
@@ -204,6 +217,7 @@ void game_start(GameState* state) {
   state->playerRunSpeed = 10.0f;
   state->fireInterval = 0.1f;
   state->maxBullets = 15;
+  state->hitpoints = 10;
 
   set_object_transform(ro, state->player, state->playerTransform);
 }
@@ -234,12 +248,15 @@ uint32 game_update(GameState* state, GameInput* input, float64 dt, float64 time)
 
 #if defined(NETWORKING)
   if(state->server.valid) {
+    state->networkMode = true;
     server_update(state);
   }
   else if(state->client.valid) {
+    state->networkMode = true;
     client_update(state);
   }
   else if(!state->practiceMode) {
+    state->networkMode = false;
     state->showMainMenu = true;
     game_end(state);
     return 0;
@@ -274,29 +291,50 @@ uint32 game_update(GameState* state, GameInput* input, float64 dt, float64 time)
 
   set_object_transform(ro, state->player, state->playerTransform);
 
+  if(state->hitpoints <= 0) {
+    state->networkMode = false;
+    state->showMainMenu = true;
+    game_end(state);
+    return 0;
+  } 
+
   if(input->fire && state->bullets.size() < state->maxBullets && fmod((float32)time, state->fireInterval) < dt) {
     BulletDesc bDesc = {};
     bDesc.startPos = state->playerTransform.position;
     bDesc.direction = vec3_forward(state->playerTransform.rotation);
     bDesc.speed = 0.75f;
-    bDesc.lifeTime = 1.0f;
+    bDesc.lifeTime = 0.4f;
+    bDesc.owner = state->player;
+
     state->bullets.push_back(spawn_bullet(ro, models, bDesc));
+#if defined(NETWORKING)
+    if(state->client.valid) client_send_bullet(&(state->client), ro, bDesc);
+    if(state->server.valid) server_send_bullet(&(state->server), ro, bDesc);
+#endif
+
     state->anySelected = true;
   }
 
   for(uint32 i = 0; i < state->bullets.size(); i++) {
     Bullet& bullet = state->bullets[i];
     if(bullet.valid) {
-      uint32 outRef;
-      BulletResult bResult = update_bullet(ro, &bullet, dt, state->player, outRef);
-      if(bResult == BulletResult::BULLET_HIT) {
 #if defined(NETWORKING)
-	for(uint32 c = 0; c < MAX_NUMBER_OF_CONNECTIONS; c++) {
-	  if(state->client.otherPlayers[c] == outRef || state->server.players[c] == outRef) {
-	    state->accountInfo.score += 500;
+      uint32 outRef;
+      BulletResult bResult = update_bullet(ro, &bullet, dt, outRef);
+      if(bResult == BulletResult::BULLET_HIT) {
+	if(bullet.desc.enemyBullet) {
+	  if(state->player == outRef) {
+	    state->hitpoints--;
 	  }
-	} 
-#endif
+	}
+	else {
+	  for(uint32 c = 0; c < MAX_NUMBER_OF_CONNECTIONS; c++) {
+	    if(state->client.otherPlayers[c] == outRef || 
+	       state->server.players[c]      == outRef) {
+	      log_("got em chief!");
+	    }
+	  } 
+	}
       }
       
       if(bResult != BulletResult::BULLET_NONE) {
@@ -305,6 +343,7 @@ uint32 game_update(GameState* state, GameInput* input, float64 dt, float64 time)
 	i = 0;
       }
     }
+#endif
   }
 
   Vec3 p = state->playerTransform.position;

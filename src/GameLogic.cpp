@@ -1,16 +1,19 @@
 #pragma once
 
 struct BulletDesc {
+  Vec3 color = {1.0f, 1.0f, 1.0f};
   Vec3 startPos;
   Vec3 direction;
   float32 lifeTime = 0.2f;
   float32 speed = 1.0f;
+  bool32 enemyBullet = false;
+  uint32 owner;
 };
 
 struct Bullet {
   uint32 ref;
   BulletDesc desc;
-  bool valid = false;
+  bool32 valid = false;
   float32 currentLifeTime = 0.0f;
 };
 
@@ -20,16 +23,27 @@ enum BulletResult {
   BULLET_NONE,
 };
 
-Bullet spawn_bullet(RenderObjects* ro, ModelInfo* models, BulletDesc desc) {
-  uint32 bullet = create_model(ro, models, 4);
+Bullet spawn_bullet(RenderObjects* ro, ModelInfo* models, const BulletDesc& desc) {
+  uint32 ref = create_model(ro, models, 4);
   Transform bulletT;
   bulletT.position = desc.startPos;
   bulletT.scale = vec3_from_scalar(0.1f);
-  set_object_transform(ro, bullet, bulletT);
-  return { bullet, desc, true };
+  set_object_transform(ro, ref, bulletT);
+  
+  Material material = get_object_material(ro, ref);
+  Vec3 red = {1.0f, 0.0f, 0.0f};
+  material.materialColor = desc.enemyBullet ? red : desc.color;
+  set_object_material(ro, ref, material);
+
+  Bullet bullet = {};
+  bullet.ref = ref;
+  bullet.desc = desc;
+  bullet.valid = true;
+  
+  return bullet;
 }
 
-BulletResult update_bullet(RenderObjects* ro, Bullet* bullet, float32 dt, uint32 player, uint32& hit) {
+BulletResult update_bullet(RenderObjects* ro, Bullet* bullet, float32 dt, uint32& hit) {
   Transform t = get_object_transform(ro, bullet->ref);
   t.position = t.position + bullet->desc.direction * bullet->desc.speed;
   set_object_transform(ro, bullet->ref, t);
@@ -41,7 +55,7 @@ BulletResult update_bullet(RenderObjects* ro, Bullet* bullet, float32 dt, uint32
   }
   uint32 outRef;
   if(check_if_in_any_bounds(ro, outRef, t.position)) {
-    if(outRef != player && outRef != bullet->ref) {
+    if(outRef != bullet->desc.owner && outRef != bullet->ref) {
       hit = outRef;
       return BulletResult::BULLET_HIT;
     }

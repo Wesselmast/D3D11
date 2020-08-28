@@ -141,6 +141,17 @@ uint32 server_update(GameState* state) {
 	  set_object_transform(ro, server->players[i], t);
 	  break;
 	}
+	case PacketType::BULLET_SPAWN: {
+	  BulletDesc bDesc = {};
+	  packet_extract(packet, bDesc.startPos);
+	  packet_extract(packet, bDesc.direction);
+	  packet_extract(packet, bDesc.speed);
+	  packet_extract(packet, bDesc.lifeTime);
+	  bDesc.enemyBullet = true;
+	  bDesc.owner = server->players[i];
+	  state->bullets.push_back(spawn_bullet(ro, models, bDesc));
+	  break;
+	}
 	default: log_("Sent package has no server-side implementation!");
 	}
       }
@@ -159,7 +170,7 @@ uint32 server_update(GameState* state) {
 	  if(!socket_send_packet(c.socket, packet)) {
 	    failed = true;
 	    break;
-	  }	  
+	  }
 	}
 	if(failed) continue;
       }
@@ -210,4 +221,28 @@ void server_shutdown(Server* server, RenderObjects* ro) {
   }
   close_connection(server->connections[0]);
   server->valid = false;
+}
+
+void server_send_bullet(Server* server, RenderObjects* ro, const BulletDesc& desc) {
+  for(uint32 i = 1; i < server->count; i++) {
+    Connection& c = server->connections[i];
+    if(!c.valid) continue;
+    
+    for(uint32 j = 0; j < server->count; j++) {
+      if(j == i) continue;
+      Packet packet;
+      Transform transform = get_object_transform(ro, server->players[j]);
+      packet_insert(packet, PacketType::BULLET_SPAWN);
+      packet_insert(packet, j);
+      packet_insert(packet, desc.startPos);
+      packet_insert(packet, desc.direction);
+      packet_insert(packet, desc.speed);
+      packet_insert(packet, desc.lifeTime);
+      
+      if(!socket_send_packet(c.socket, packet)) {
+	disconnect_client(server, ro, i);
+	break;
+      }
+    }
+  }
 }

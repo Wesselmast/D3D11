@@ -31,6 +31,8 @@ bool32 client_update(GameState* state) {
   Client* client = &(state->client); 
   RenderObjects* ro = &(state->renderObjects);
 
+  if(!client->valid) return 1;
+
   {
     Packet packet;
     if(!socket_recieve_packet(client->connection.socket, packet)) {
@@ -52,6 +54,20 @@ bool32 client_update(GameState* state) {
       set_object_transform(ro, client->otherPlayers[index], t);
       break;
     }
+    case PacketType::BULLET_SPAWN: {
+      BulletDesc bDesc = {};
+      uint32 index;
+      packet_extract(packet, index);
+      packet_extract(packet, bDesc.startPos);
+      packet_extract(packet, bDesc.direction);
+      packet_extract(packet, bDesc.speed);
+      packet_extract(packet, bDesc.lifeTime);
+
+      bDesc.enemyBullet = true;
+      bDesc.owner = client->otherPlayers[index];
+      state->bullets.push_back(spawn_bullet(ro, models, bDesc));
+      break;
+    }
     case PacketType::NEW_CONNECTION: {
       uint32 newConnection;
       packet_extract(packet, newConnection);
@@ -60,7 +76,6 @@ bool32 client_update(GameState* state) {
       break;
     }
     case PacketType::SERVER_DISCONNECT: {
-      log_("wadwd");
       client_disconnect(client, ro);      
       return 1;
     }
@@ -79,4 +94,17 @@ bool32 client_update(GameState* state) {
   }
 
   return 0;
+}
+
+void client_send_bullet(Client* client, RenderObjects* ro, const BulletDesc& desc) {
+  Packet packet;
+  packet_insert(packet, PacketType::BULLET_SPAWN);
+  packet_insert(packet, desc.startPos);
+  packet_insert(packet, desc.direction);
+  packet_insert(packet, desc.speed);
+  packet_insert(packet, desc.lifeTime);
+ 
+  if(!socket_send_packet(client->connection.socket, packet)) {
+    client_disconnect(client, ro);      
+  }
 }

@@ -368,6 +368,10 @@ Transform get_object_transform(RenderObjects* renderObjects, uint32 index) {
   return (&(renderObjects->descriptors[index]))->transform;
 }
 
+Material get_object_material(RenderObjects* renderObjects, uint32 index) {
+  return (&(renderObjects->descriptors[index]))->material;
+}
+
 void update_view_projection(const Mat4& viewProjection) {
   ID3D11DeviceContext* context = renderInfo.context;
 
