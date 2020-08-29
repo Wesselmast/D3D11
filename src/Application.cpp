@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <future>
 
 #include "Camera.cpp"
 #include "GameCollision.cpp"
@@ -90,18 +91,19 @@ static ModelInfo models[AMOUNT_OF_MODELS];
 #include "Game.cpp"
 #include "Editor.cpp"
 
-void render_popup_windows() {
-}
+static std::mutex mutex;
 
-void import_texture(GameMemory* memory, Texture* textures, const char* path, uint32 index) {
+static void import_texture(GameMemory* memory, Texture* textures, const char* path, uint32 index) {
   Bitmap bmp = {};
   load_bitmap(memory, path, bmp);
+  std::lock_guard<std::mutex> lock(mutex);
   textures[index] = make_texture(bmp);
 }
 
-void import_model(GameMemory* memory, ModelInfo* models, const char* path, uint32 index) {
+static void import_model(GameMemory* memory, ModelInfo* models, const char* path, uint32 index) {
   ModelInfo info = {};
   load_obj(memory, path, info);
+  std::lock_guard<std::mutex> lock(mutex);
   models[index] = info;
 }
 
@@ -132,21 +134,40 @@ int32 app_update(GameMemory* memory, GameInput* input, float64 dt, float64 time)
     state->server = {};
 #endif
 
-    import_texture(memory, textures, "res\\textures\\T_Pixel.bmp",        0);
-    import_texture(memory, textures, "res\\textures\\T_CheckerBoard.bmp", 1);
-    import_texture(memory, textures, "res\\textures\\T_Creature4.bmp",    2);
-    import_texture(memory, textures, "res\\textures\\T_Brick.bmp",        3);
-    import_texture(memory, textures, "res\\textures\\T_Desert.bmp",       4);
-    import_texture(memory, textures, "res\\textures\\T_CowboyOutfit.bmp", 5);
+    std::vector<std::future<void>> futures;
 
-    uint32 mIndex = 0;
-    import_model(memory, models, "res\\models\\Cube.obj",      0);
-    import_model(memory, models, "res\\models\\Plane.obj",     1);
-    import_model(memory, models, "res\\models\\Monkey.obj",    2);
-    import_model(memory, models, "res\\models\\Cactus.obj",    3);
-    import_model(memory, models, "res\\models\\Sphere.obj",    4);
-    import_model(memory, models, "res\\models\\Creature.obj",  5);
-    import_model(memory, models, "res\\models\\Cowboy.obj",    6);
+    futures.push_back(std::async(std::launch::async, import_texture, 
+	       memory, textures, "res\\textures\\T_Pixel.bmp",        0));
+    futures.push_back(std::async(std::launch::async, import_texture, 
+	       memory, textures, "res\\textures\\T_CheckerBoard.bmp", 1));
+    futures.push_back(std::async(std::launch::async, import_texture, 
+	       memory, textures, "res\\textures\\T_Creature4.bmp",    2));
+    futures.push_back(std::async(std::launch::async, import_texture, 
+	       memory, textures, "res\\textures\\T_Brick.bmp",        3));
+    futures.push_back(std::async(std::launch::async, import_texture, 
+	       memory, textures, "res\\textures\\T_Desert.bmp",       4));
+    futures.push_back(std::async(std::launch::async, import_texture, 
+	       memory, textures, "res\\textures\\T_CowboyOutfit.bmp", 5));
+
+
+    futures.push_back(std::async(std::launch::async, import_model, 
+	       memory, models, "res\\models\\Cube.obj",     0));
+    futures.push_back(std::async(std::launch::async, import_model, 
+	       memory, models, "res\\models\\Plane.obj",    1));
+    futures.push_back(std::async(std::launch::async, import_model, 
+	       memory, models, "res\\models\\Monkey.obj",   2));
+    futures.push_back(std::async(std::launch::async, import_model, 
+	       memory, models, "res\\models\\Cactus.obj",   3));
+    futures.push_back(std::async(std::launch::async, import_model, 
+	       memory, models, "res\\models\\Sphere.obj",   4));
+    futures.push_back(std::async(std::launch::async, import_model, 
+	       memory, models, "res\\models\\Creature.obj", 5));
+    futures.push_back(std::async(std::launch::async, import_model, 
+	       memory, models, "res\\models\\Cowboy.obj",   6));
+
+    for(auto& f : futures) {
+      f.wait();
+    }
 
     state->player = create_player(ro, models, false);    
     memory->isInitialized = true;
@@ -159,6 +180,7 @@ int32 app_update(GameMemory* memory, GameInput* input, float64 dt, float64 time)
     res |= editor_update(state, input, dt, time);
     render_loop(get_view_projection(cameras, state->editorCamera), &(state->light));
   }
+
   else {
     res |= game_update(state, input, dt, time);
     render_loop(get_view_projection(cameras, state->gameCamera), &(state->light));
