@@ -1,6 +1,5 @@
 #pragma once
 #include <vector>
-#include <future>
 
 #include "Camera.cpp"
 #include "GameCollision.cpp"
@@ -91,20 +90,68 @@ static ModelInfo models[AMOUNT_OF_MODELS];
 #include "Game.cpp"
 #include "Editor.cpp"
 
+#ifdef ASYNC
+#include <future>
 static std::mutex mutex;
+#endif
 
 static void import_texture(GameMemory* memory, Texture* textures, const char* path, uint32 index) {
   Bitmap bmp = {};
   load_bitmap(memory, path, bmp);
+#ifdef ASYNC
   std::lock_guard<std::mutex> lock(mutex);
+#endif
   textures[index] = make_texture(bmp);
 }
 
 static void import_model(GameMemory* memory, ModelInfo* models, const char* path, uint32 index) {
   ModelInfo info = {};
   load_obj(memory, path, info);
+#ifdef ASYNC
   std::lock_guard<std::mutex> lock(mutex);
+#endif
   models[index] = info;
+}
+
+static void load_all_objects(GameMemory* memory, Texture* textures, ModelInfo* models, const char* path) {
+  std::chrono::high_resolution_clock timer;
+  auto start = timer.now();
+
+  char texturePaths[AMOUNT_OF_TEXTURES][256];
+  char modelPaths[AMOUNT_OF_MODELS][256];
+  uint32 amountOfTextures = 0;
+  uint32 amountOfModels = 0;
+  load_object_paths(path, texturePaths, modelPaths, amountOfTextures, amountOfModels); 
+#ifdef ASYNC
+  std::future<void> futures[amountOfTextures + amountOfModels];
+#endif  
+  for(uint32 i = 0; i < amountOfTextures; i++) {
+#ifdef ASYNC
+    futures[i] = std::async(std::launch::async, import_texture, 
+			    memory, textures, texturePaths[i], i);
+#else
+    import_texture(memory, textures, texturePaths[i], i);
+#endif
+    
+  }
+  for(uint32 i = 0; i < amountOfModels; i++) {
+#ifdef ASYNC
+    uint32 fi = i + amountOfTextures; 
+    futures[fi] = std::async(std::launch::async, import_model, 
+			     memory, models, modelPaths[i], i);
+#else
+    import_model(memory, models, modelPaths[i], i);
+#endif
+  }
+   
+#ifdef ASYNC
+  for(std::future<void>& f : futures) {
+    f.wait();
+  } 
+#endif
+
+  log_("Total time taken loading models : %f seconds\n", 
+       std::chrono::duration<float64>(timer.now() - start).count());
 }
 
 int32 app_update(GameMemory* memory, GameInput* input, float64 dt, float64 time) {
@@ -134,40 +181,7 @@ int32 app_update(GameMemory* memory, GameInput* input, float64 dt, float64 time)
     state->server = {};
 #endif
 
-    std::vector<std::future<void>> futures;
-
-    futures.push_back(std::async(std::launch::async, import_texture, 
-	       memory, textures, "res\\textures\\T_Pixel.bmp",        0));
-    futures.push_back(std::async(std::launch::async, import_texture, 
-	       memory, textures, "res\\textures\\T_CheckerBoard.bmp", 1));
-    futures.push_back(std::async(std::launch::async, import_texture, 
-	       memory, textures, "res\\textures\\T_Creature4.bmp",    2));
-    futures.push_back(std::async(std::launch::async, import_texture, 
-	       memory, textures, "res\\textures\\T_Brick.bmp",        3));
-    futures.push_back(std::async(std::launch::async, import_texture, 
-	       memory, textures, "res\\textures\\T_Desert.bmp",       4));
-    futures.push_back(std::async(std::launch::async, import_texture, 
-	       memory, textures, "res\\textures\\T_CowboyOutfit.bmp", 5));
-
-
-    futures.push_back(std::async(std::launch::async, import_model, 
-	       memory, models, "res\\models\\Cube.obj",     0));
-    futures.push_back(std::async(std::launch::async, import_model, 
-	       memory, models, "res\\models\\Plane.obj",    1));
-    futures.push_back(std::async(std::launch::async, import_model, 
-	       memory, models, "res\\models\\Monkey.obj",   2));
-    futures.push_back(std::async(std::launch::async, import_model, 
-	       memory, models, "res\\models\\Cactus.obj",   3));
-    futures.push_back(std::async(std::launch::async, import_model, 
-	       memory, models, "res\\models\\Sphere.obj",   4));
-    futures.push_back(std::async(std::launch::async, import_model, 
-	       memory, models, "res\\models\\Creature.obj", 5));
-    futures.push_back(std::async(std::launch::async, import_model, 
-	       memory, models, "res\\models\\Cowboy.obj",   6));
-
-    for(auto& f : futures) {
-      f.wait();
-    }
+    load_all_objects(memory, textures, models, "res\\.objectpaths");
 
     state->player = create_player(ro, models, false);    
     memory->isInitialized = true;

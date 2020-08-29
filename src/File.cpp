@@ -102,7 +102,7 @@ void load_obj(GameMemory* memory, const char* path, ModelInfo& info) {
 
   while(1) {
     char line[256];
-    int result = fscanf(file, "%s", line);
+    int32 result = fscanf(file, "%s", line);
     if(result == EOF) {
       break;
     }
@@ -188,4 +188,37 @@ void load_obj(GameMemory* memory, const char* path, ModelInfo& info) {
   info.indices = indices;
   info.iSize = indexOffset * sizeof(uint16);
   strcpy(info.name, name);
+}
+
+void load_object_paths(const char* path, char texturePaths[][256], char modelPaths[][256], uint32& amountOfTextures, uint32& amountOfModels) {
+  char fPath[512];
+  full_path(fPath, path);
+  FILE* file = fopen(fPath, "r");
+  assert_(file, "Trying to load a file that doesn't exist!");
+
+  while(1) {
+    char line[256];
+    int32 result = fscanf(file, "%s", line);
+    if(result == EOF) {
+      break;
+    }
+    else if(!strcmp(line, "t")) {
+      uint32 index;
+      char tempPath[256];
+      fscanf(file, "%d %s\n", &index, tempPath);
+      strcpy(texturePaths[index], tempPath);
+      amountOfTextures++;
+    }
+    else if(!strcmp(line, "m")) {
+      uint32 index;
+      char tempPath[256];
+      fscanf(file, "%d %s\n", &index, tempPath);
+      strcpy(modelPaths[index], tempPath);
+      amountOfModels++;
+    }
+    else {
+      assert_(false, "invalid input! cannot read file\n");
+    }
+  }
+  fclose(file);
 }

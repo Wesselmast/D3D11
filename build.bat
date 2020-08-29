@@ -2,7 +2,7 @@
 
 set config=%1
 
-set genericflags=-D_CRT_SECURE_NO_WARNINGS -Wall -Wno-unused-variable -c -D_GLFW_WIN32 -DNETWORKING
+set genericflags=-D_CRT_SECURE_NO_WARNINGS -Wall -Wno-unused-variable -c -D_GLFW_WIN32 -DNETWORKING -DASYNC
 set dflags= %genericflags% -g -DDEBUG
 set rflags=%genericflags% -O2 -DRELEASE
 set dLflags=-g

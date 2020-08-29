@@ -1,0 +1,13 @@
+t 0 res\\textures\\T_Pixel.bmp 
+t 1 res\\textures\\T_CheckerBoard.bmp
+t 2 res\\textures\\T_Creature4.bmp
+t 3 res\\textures\\T_Brick.bmp
+t 4 res\\textures\\T_Desert.bmp
+t 5 res\\textures\\T_CowboyOutfit.bmp
+m 0 res\\models\\Cube.obj
+m 1 res\\models\\Plane.obj
+m 2 res\\models\\Monkey.obj
+m 3 res\\models\\Cactus.obj
+m 4 res\\models\\Sphere.obj
+m 5 res\\models\\Creature.obj
+m 6 res\\models\\Cowboy.obj
