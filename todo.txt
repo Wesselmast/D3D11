@@ -11,7 +11,7 @@ Rendering:
 - Outline effect for selected objects
 
 Colliders:
-- The bounds check is definately not right yet (looks like a scale issue?)
+- The bounds check is definitely not right yet (looks like a scale issue?)
 - There should probably be some way to wireframe-represent the colliders
 
 Login System:

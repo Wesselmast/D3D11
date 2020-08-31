@@ -32,6 +32,17 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
       char score[10];
       _ltoa(state->accountInfo.score, score, 10);
 
+      if(strlen(state->accountInfo.username) < 1) {
+	ImGui::OpenPopup("UsernameShortPopup");
+	ImGui::End();
+	return quit;
+      }
+      if(strlen(state->accountInfo.password) < 1) {
+	ImGui::OpenPopup("PasswordShortPopup");
+	ImGui::End();
+	return quit;
+      }
+      
       char request[256];
       strcpy(request, "type=register&username=");
       strcat(request, state->accountInfo.username);
@@ -81,6 +92,10 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
     ImVec2 middle(windowWidth  * 0.5f, windowHeight * 0.5f);
     imgui_popup_window("UsernameTakenPopup", middle, 
 		       "This username is already taken!");
+    imgui_popup_window("PasswordShortPopup", middle, 
+		       "Your password is too short!");
+    imgui_popup_window("UsernameShortPopup", middle, 
+		       "Your username is too short!");
     imgui_popup_window("SuccessfulRegPopup", middle, 
 		       "Successfully registered!");
     imgui_popup_window("LoginFailedPopup",   middle, 
@@ -181,6 +196,9 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
       state->showNetworking = false;
       state->startGame = true;
     }  
+    ImVec2 middle(windowWidth  * 0.5f, windowHeight * 0.5f);
+    imgui_popup_window("InvalidDottedStringPopup", middle, 
+		       "couldn't create ip endpoint, entered invalid dotted decimal string!!");
     ImGui::End();
   }
 #endif

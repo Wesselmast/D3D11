@@ -24,6 +24,7 @@ struct IPEndPoint {
   uint8 ipdata[16];
   uint16 port;
   IPVersion ipversion = IPVersion::IP_NONE;
+  bool32 valid = true;
 };
 
 struct Connection {
@@ -117,7 +118,9 @@ IPEndPoint create_ip_endpoint(const char* ip, uint16 port) {
   }
 
   if(result == 0) {
-    assert_(false, "coulnd't create ip endpoint, entered invalid dotted decimal string!");
+    ImGui::OpenPopup("InvalidDottedStringPopup");
+    ipEndPoint.valid = false;
+    //assert_(false, "coulnd't create ip endpoint, entered invalid dotted decimal string!");
   }
   else if(result < 0) {
     wsa_fail(WSAGetLastError());
@@ -234,11 +237,12 @@ void listen_connection(Connection& c, int32 backlog) {
   if(c.ipEndPoint.ipversion == IPVersion::IPV6) {
     set_socket_option(c.socket, SocketOption::IPV6_ONLY, 0);
   }
-  
+
   bind_socket(c.socket, c.ipEndPoint);
   int32 result = listen(c.socket, backlog); 
   if(result) {
-    wsa_fail(WSAGetLastError());
+    log_("trying to listem from an invalid socket\n");
+    //wsa_fail(WSAGetLastError());
   }
 }
 
@@ -249,13 +253,14 @@ bool32 accept_connection(Connection& inC, Connection& outC) {
     
     outC.socket = accept(inC.socket, (sockaddr*)&addr, &len);
     if(outC.socket == INVALID_SOCKET) {
-      wsa_fail(WSAGetLastError());
+      log_("trying to accept an invalid socket\n");
+      //wsa_fail(WSAGetLastError());
       return 0;
     }
 
     outC.ipEndPoint = create_ip_endpoint((sockaddr*)&addr);
-    outC.valid = 1;
-    return 1;
+    outC.valid = outC.ipEndPoint.valid;
+    return outC.valid;
   }
   else if(inC.ipEndPoint.ipversion == IPVersion::IPV6) {
     sockaddr_in6 addr = {};
@@ -263,13 +268,14 @@ bool32 accept_connection(Connection& inC, Connection& outC) {
     
     outC.socket = accept(inC.socket, (sockaddr*)&addr, &len);
     if(outC.socket == INVALID_SOCKET) {
-      wsa_fail(WSAGetLastError());
+      //wsa_fail(WSAGetLastError());
+      log_("trying to accept an invalid socket\n");
       return 0;
     }
 
     outC.ipEndPoint = create_ip_endpoint((sockaddr*)&addr);
-    outC.valid = 1;
-    return 1; 
+    outC.valid = outC.ipEndPoint.valid;
+    return outC.valid;  
   }
 
   return 0;
