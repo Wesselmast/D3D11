@@ -37,4 +37,5 @@ Other:
 Top priority:
 - Full game loop : ~ almost there!
 - Show scoreboard after the game is finished
+- Populate the world and improve model loading
 - Shadows
