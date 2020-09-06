@@ -86,7 +86,7 @@ void php_request_str(PHP* php, const char* request, char* data) {
   
   uint32 statusCode = get_status_code(iRequest);
   if(statusCode == 200) {
-    const int bufSize = 1024;
+    const int bufSize = 4086;
     char buff[bufSize];
     
     DWORD bytesRead;

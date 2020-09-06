@@ -16,7 +16,7 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
   RenderObjects* ro = &(state->renderObjects);
 
   if(!state->accountInfo.loggedin) { //Log into account via the server
-    const ImVec2 nws = { 300, 175 };
+    const ImVec2 nws = { 375, 175 };
     ImGui::SetNextWindowPos(ImVec2((windowWidth  * 0.5f) - (nws.x * 0.5f), 
 				   (windowHeight * 0.5f) - (nws.y * 0.5f)));
     ImGui::SetNextWindowSize(nws);
@@ -25,8 +25,12 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
     ImGui::Text("Welcome to *Untitled*"); 
     ImGui::Text("please log in or register to continue!");
     ImGui::NewLine();
-    ImGui::InputText("* Username", (char*)&(state->accountInfo.username), 128);
-    ImGui::InputText("* Password", (char*)&(state->accountInfo.password), 128, ImGuiInputTextFlags_Password);
+
+    ImGui::Text("your username may only contain letters and numbers");
+    ImGui::InputText("* Username", (char*)&(state->accountInfo.username), 128, 
+		     ImGuiInputTextFlags_CallbackCharFilter, filter_username);
+    ImGui::InputText("* Password", (char*)&(state->accountInfo.password), 128, 
+		     ImGuiInputTextFlags_Password);
 
     if(ImGui::Button("Register")) {
       char score[10];
@@ -117,12 +121,18 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
       ImGui::NewLine();
       state->showNetworking = ImGui::Button("PLAY ONLINE", bts);
       ImGui::NewLine();
+      if(ImGui::Button("DEBUG TOP 5", bts)) {
+	char data[4086];
+	php_request_str(&(state->php), "type=get_top&amount=5", data);
+	log_("%s\n", data);
+      }
+      ImGui::NewLine();
       quit = ImGui::Button("QUIT GAME", bts);
       
       state->showMainMenu &= !state->showNetworking;
       state->showMainMenu &= !state->practiceMode;
       state->startGame |= state->practiceMode;
-      
+
       ImGui::End();
     }
 

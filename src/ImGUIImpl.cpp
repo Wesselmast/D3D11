@@ -67,3 +67,13 @@ void imgui_popup_window(const char* name, ImVec2 position, const char* text) {
     ImGui::EndPopup();
   }
 }
+
+static int32 filter_username(ImGuiTextEditCallbackData* data) { 
+  ImWchar& c = data->EventChar;
+  if ((c >= 'A' && c <= 'Z') ||
+      (c >= 'a' && c <= 'z') ||
+      (c >= '0' && c <= '9')) { 
+    return 0;
+  }
+  return 1;
+}

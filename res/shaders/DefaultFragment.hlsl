@@ -1,3 +1,4 @@
+
 cbuffer Light {
   float3 lightPos;
   float3 ambientColor;
