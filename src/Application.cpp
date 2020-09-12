@@ -76,6 +76,8 @@ struct GameState {
   bool32 practiceMode;
   bool32 networkMode;
 
+  bool32 gameOver;
+
 #if defined(NETWORKING)
   Client client;
   Server server;
@@ -173,7 +175,6 @@ int32 app_update(GameMemory* memory, GameInput* input, float64 dt, float64 time)
     state->gameCamera = create_camera(cameras);
     state->light = {};
     state->light.camera = create_camera(cameras);
-    state->showMainMenu = false;
 
 #if defined(NETWORKING)
     initialize();

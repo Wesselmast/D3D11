@@ -86,7 +86,7 @@ void php_request_str(PHP* php, const char* request, char* data) {
   
   uint32 statusCode = get_status_code(iRequest);
   if(statusCode == 200) {
-    const int bufSize = 4086;
+    const int bufSize = 4096;
     char buff[bufSize];
     
     DWORD bytesRead;
@@ -96,4 +96,23 @@ void php_request_str(PHP* php, const char* request, char* data) {
   }
 
   if(iRequest) InternetCloseHandle(iRequest);
+}
+
+void parse_top_amount(PHP* php, char arr[][256], uint32 amount) {
+  char data[4096];
+
+  char request[256];
+  strcpy(request, "type=get_top&amount=");
+  char amt[8];
+  _itoa(amount, amt, 10);
+  strcat(request, amt);
+  php_request_str(php, request, data);
+  
+  uint32 i = 0;
+  char* token = strtok(data, "|");
+  while(token) {
+    strcpy(arr[i], token);
+    token = strtok(0, "|");
+    i++;
+  }
 }

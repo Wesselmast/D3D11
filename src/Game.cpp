@@ -122,9 +122,11 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
       state->showNetworking = ImGui::Button("PLAY ONLINE", bts);
       ImGui::NewLine();
       if(ImGui::Button("DEBUG TOP 5", bts)) {
-	char data[4086];
-	php_request_str(&(state->php), "type=get_top&amount=5", data);
-	log_("%s\n", data);
+	char data[5][256];
+	parse_top_amount(&state->php, data, 5);
+	for(uint32 i = 0; i < 5; i++) {
+	  log_("%s\n", data[i]);
+	}
       }
       ImGui::NewLine();
       quit = ImGui::Button("QUIT GAME", bts);
@@ -213,6 +215,43 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
   }
 #endif
 
+  if(state->gameOver) {
+    { //Middle of the screen menu
+      const ImVec2 nws = { 215, 200 };
+      const ImVec2 bts = { 200, 30  };
+      ImGui::SetNextWindowPos(ImVec2((windowWidth  * 0.5f) - (nws.x * 0.5f), 
+				     (windowHeight * 0.5f) - (nws.y * 0.5f)));
+      ImGui::SetNextWindowSize(nws);
+      
+      ImGui::Begin("Game Over", 0, imgui_static_window_flags());
+      
+      ImGui::Text("HIGHSCORES:");
+      ImGui::NewLine();
+      const uint32 amt = 10;
+      char data[amt][256];
+      parse_top_amount(&state->php, data, amt);
+      uint32 offset = 1;
+      for(uint32 i = 0; i < amt; i += 2) {
+	ImGui::Text("#%d", i + offset);
+	ImGui::SameLine();
+	ImGui::Text("%s", data[i]);
+	ImGui::SameLine(nws.x - 40);
+	ImGui::Text("%s", data[i + 1]);
+	if(i != amt - 2) {
+	  ImGui::Separator();
+	}
+	offset--;
+      }
+      ImGui::NewLine();
+      state->showMainMenu = ImGui::Button("MAIN MENU", bts);
+      if(state->showMainMenu) {
+	game_end(state);
+      }
+
+      ImGui::End();
+    }
+  }
+
   if(!state->playGame && state->startGame) {
     state->showMainMenu = false;
     game_start(state);
@@ -254,6 +293,7 @@ void game_end(GameState* state) {
   state->playGame = false;
   state->startGame = false;
   state->practiceMode = false;
+  state->gameOver = false;
 
   RenderObjects* ro = &(state->renderObjects);
   Cameras* cameras  = &(state->cameras);
@@ -285,8 +325,7 @@ uint32 game_update(GameState* state, GameInput* input, float64 dt, float64 time)
   }
   else if(!state->practiceMode) {
     state->networkMode = false;
-    state->showMainMenu = true;
-    game_end(state);
+    state->gameOver = true;
     return 0;
   }
 #endif
@@ -321,8 +360,7 @@ uint32 game_update(GameState* state, GameInput* input, float64 dt, float64 time)
 
   if(state->hitpoints <= 0) {
     state->networkMode = false;
-    state->showMainMenu = true;
-    game_end(state);
+    state->gameOver = true;
     return 0;
   } 
 
