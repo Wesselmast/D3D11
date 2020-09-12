@@ -121,14 +121,6 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
       ImGui::NewLine();
       state->showNetworking = ImGui::Button("PLAY ONLINE", bts);
       ImGui::NewLine();
-      if(ImGui::Button("DEBUG TOP 5", bts)) {
-	char data[5][256];
-	parse_top_amount(&state->php, data, 5);
-	for(uint32 i = 0; i < 5; i++) {
-	  log_("%s\n", data[i]);
-	}
-      }
-      ImGui::NewLine();
       quit = ImGui::Button("QUIT GAME", bts);
       
       state->showMainMenu &= !state->showNetworking;
