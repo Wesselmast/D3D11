@@ -75,6 +75,12 @@ bool32 client_update(GameState* state) {
       client->otherPlayerCount++;
       break;
     }
+    case PacketType::PLAYER_DIED: {
+      state->networkMode = false;
+      state->gameOver = true;
+      state->gameResult = GameResult::GAME_WON;
+      break;
+    }
     case PacketType::SERVER_DISCONNECT: {
       client_disconnect(client, ro);      
       return 1;
@@ -104,6 +110,15 @@ void client_send_bullet(Client* client, RenderObjects* ro, const BulletDesc& des
   packet_insert(packet, desc.speed);
   packet_insert(packet, desc.lifeTime);
  
+  if(!socket_send_packet(client->connection.socket, packet)) {
+    client_disconnect(client, ro);      
+  }
+}
+
+void client_player_died(Client* client, RenderObjects* ro) {
+  Packet packet;
+  packet_insert(packet, PacketType::PLAYER_DIED);
+  
   if(!socket_send_packet(client->connection.socket, packet)) {
     client_disconnect(client, ro);      
   }

@@ -114,13 +114,6 @@ uint32 server_update(GameState* state) {
 	disconnect_client(server, ro, i);
 	continue;
       }
-      // if(tempDescs[i].revents & POLLNVAL) {
-      // 	log_("Invalid socket on port %d! Closing..\n", c.ipEndPoint.port);
-      // 	server->connections[i] = {};
-      // 	server->descriptors[i] = {};
-      // 	close_connection(c);
-      // 	continue;
-      // }
 
       if(tempDescs[i].revents & POLLRDNORM) {
 	Packet packet;
@@ -152,6 +145,12 @@ uint32 server_update(GameState* state) {
 	  state->bullets.push_back(spawn_bullet(ro, models, bDesc));
 	  break;
 	}
+	case PacketType::PLAYER_DIED: {
+	  state->networkMode = false;
+	  state->gameOver = true;
+	  state->gameResult = GameResult::GAME_WON;
+	  break;
+	}
 	default: log_("Sent package has no server-side implementation!");
 	}
       }
@@ -174,42 +173,8 @@ uint32 server_update(GameState* state) {
 	}
 	if(failed) continue;
       }
-
-	// char buf[MAX_PACKET_SIZE];
-	// uint32 bytesRecieved = 0;
-	// bytesRecieved = recv(tempDescs[i].fd, buf, MAX_PACKET_SIZE, 0);
-	// if(bytesRecieved == 0) {
-	//   log_("Connection lost port %d, v0, Closing..\n", c.ipEndPoint.port);
-	//   close_connection(c);
-	//   continue;
-	// }
-	// if(bytesRecieved == SOCKET_ERROR) {
-	//   int32 error = WSAGetLastError();
-	//   if(error != WSAEWOULDBLOCK) {
-	//     log_("Connection lost port %d, v1, Closing..\n", c.ipEndPoint.port);
-	//     close_connection(c);
-	//     log_("connection %d was closed!\n", i);
-	//     continue;	    
-	//   }
-	// }
-	  //log_("recieved message from %d of size %d\n", c.ipEndPoint.port, bytesRecieved);
     }    
   }
-  
-
-
-  // Packet packet;
-  // while(1) {
-  //   if(!socket_recieve_packet(newSocket, packet)) break;
-    
-  //   uint32 a, b, c;
-  //   char buf[256];
-  //   packet_extract(packet, a); 
-  //   packet_extract(packet, b); 
-  //   packet_extract(packet, c); 
-  //   packet_extract(packet, buf); 
-  //   log_("%d, %d, %d, %s\n", a, b, c, buf);
-  // }
   return 0;
 }
 
@@ -243,6 +208,21 @@ void server_send_bullet(Server* server, RenderObjects* ro, const BulletDesc& des
 	disconnect_client(server, ro, i);
 	break;
       }
+    }
+  }
+}
+
+void server_player_died(Server* server, RenderObjects* ro) {
+  for(uint32 i = 1; i < server->count; i++) {
+    Connection& c = server->connections[i];
+    if(!c.valid) continue;
+  
+    Packet packet;
+    packet_insert(packet, PacketType::PLAYER_DIED);
+    
+    if(!socket_send_packet(c.socket, packet)) {
+      disconnect_client(server, ro, i);
+      break;
     }
   }
 }

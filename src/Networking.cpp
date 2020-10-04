@@ -118,7 +118,6 @@ IPEndPoint create_ip_endpoint(const char* ip, uint16 port) {
   }
 
   if(result == 0) {
-    ImGui::OpenPopup("InvalidDottedStringPopup");
     ipEndPoint.valid = false;
     //assert_(false, "coulnd't create ip endpoint, entered invalid dotted decimal string!");
   }

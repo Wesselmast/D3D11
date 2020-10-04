@@ -180,6 +180,8 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
   if(state->showNetworking) { //Connect to others via IP
     ImGui::Begin("Networking", 0, imgui_default_window_flags());
     
+    const uint32 minimalInvestment = 1000; 
+
     ImGui::InputText("ip", targetConnectionIP, 128);
     ImGui::SameLine();
     ImGui::InputInt("port", &targetConnectionPort);
@@ -188,21 +190,38 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
       if(state->server.valid) server_shutdown(&state->server, ro);
       if(state->client.valid) client_disconnect(&state->client, ro);
 
-      server_startup(&state->server, create_ip_endpoint(targetConnectionIP, (uint16)targetConnectionPort));
-      state->showNetworking = false;
-      state->startGame = true;
+      if(state->accountInfo.score < minimalInvestment) {
+	ImGui::OpenPopup("NotEnoughMoneyPopup");
+      }
+      else {
+	server_startup(&state->server, create_ip_endpoint(targetConnectionIP, (uint16)targetConnectionPort));
+	state->accountInfo.score -= state->investment;
+	state->showNetworking = false;
+	state->startGame = true;
+      }
     }
     if(ImGui::Button("Start client")) {
       if(state->server.valid) server_shutdown(&state->server, ro);
       if(state->client.valid) client_disconnect(&state->client, ro);
 
-      client_connect(&state->client, create_ip_endpoint(targetConnectionIP, (uint16)targetConnectionPort));
-      state->showNetworking = false;
-      state->startGame = true;
+      if(state->accountInfo.score < minimalInvestment) {
+	ImGui::OpenPopup("NotEnoughMoneyPopup");
+      }
+      else {
+	client_connect(&state->client, create_ip_endpoint(targetConnectionIP, (uint16)targetConnectionPort));
+	state->accountInfo.score -= state->investment;
+	state->showNetworking = false;
+	state->startGame = true;
+      }
     }  
+
+    ImGui::NewLine();
+    ImGui::Text("Invest bucks! You have %lld", state->accountInfo.score);
+    ImGui::SliderInt("bucks", &(state->investment), 1000, state->accountInfo.score);
+    
     ImVec2 middle(windowWidth  * 0.5f, windowHeight * 0.5f);
-    imgui_popup_window("InvalidDottedStringPopup", middle, 
-		       "couldn't create ip endpoint, entered invalid dotted decimal string!!");
+    imgui_popup_window("NotEnoughMoneyPopup", middle, 
+		       "Unfortunately you don't have enough funds to play anymore.. go home!");
     ImGui::End();
   }
 #endif
@@ -216,6 +235,31 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
       ImGui::SetNextWindowSize(nws);
       
       ImGui::Begin("Game Over", 0, imgui_static_window_flags());
+
+
+      if(state->gameResult != GameResult::NONE) {
+	if(state->gameResult == GameResult::GAME_WON) {
+	  state->accountInfo.score += state->investment * 2;
+	}
+	
+	log_("pizzaslices");
+
+	char id[10];
+	_ltoa(state->accountInfo.id, id, 10);
+	char score[10];
+	_ltoa(state->accountInfo.score, score, 10);
+	  
+	char scoreRequest[256];
+	strcpy(scoreRequest, "type=set_score&id=");
+	strcat(scoreRequest, id);
+	strcat(scoreRequest, "&score=");
+	strcat(scoreRequest, score);
+	
+	int64 result;
+	php_request_int(&(state->php), scoreRequest, &result);
+	
+	state->gameResult = GameResult::NONE;
+      }
       
       ImGui::Text("HIGHSCORES:");
       ImGui::NewLine();
@@ -305,6 +349,7 @@ uint32 game_update(GameState* state, GameInput* input, float64 dt, float64 time)
   if(input->mouseLocked) lock_mouse(false);
 
   if(!state->playGame) return 0;
+  if(state->gameOver) return 0;
 
 #if defined(NETWORKING)
   if(state->server.valid) {
@@ -353,6 +398,14 @@ uint32 game_update(GameState* state, GameInput* input, float64 dt, float64 time)
   if(state->hitpoints <= 0) {
     state->networkMode = false;
     state->gameOver = true;
+
+    log_("AOIJDNAWONDWAJNDWA0");
+
+#if defined(NETWORKING)
+    if(state->client.valid) client_player_died(&(state->client), ro);
+    if(state->server.valid) server_player_died(&(state->server), ro);
+#endif
+    state->gameResult = GameResult::GAME_LOST;
     return 0;
   } 
 

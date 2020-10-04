@@ -10,6 +10,12 @@
 #include "Networking.cpp"
 #endif
 
+enum GameResult {
+  NONE,
+  GAME_WON,
+  GAME_LOST
+};
+
 struct GameInput {
   bool32 up;
   bool32 left;
@@ -59,6 +65,7 @@ struct GameState {
   float32 playerSpeed;  
   float32 playerWalkSpeed;  
   float32 playerRunSpeed;  
+  int32 investment;
   
   std::vector<Bullet> bullets;
   float32 fireInterval;
@@ -77,6 +84,7 @@ struct GameState {
   bool32 networkMode;
 
   bool32 gameOver;
+  GameResult gameResult;
 
 #if defined(NETWORKING)
   Client client;
@@ -175,6 +183,7 @@ int32 app_update(GameMemory* memory, GameInput* input, float64 dt, float64 time)
     state->gameCamera = create_camera(cameras);
     state->light = {};
     state->light.camera = create_camera(cameras);
+    state->investment = 1000;
 
 #if defined(NETWORKING)
     initialize();
