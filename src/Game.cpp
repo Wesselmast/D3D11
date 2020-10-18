@@ -20,7 +20,7 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
     ImGui::SetNextWindowPos(ImVec2((windowWidth  * 0.5f) - (nws.x * 0.5f), 
 				   (windowHeight * 0.5f) - (nws.y * 0.5f)));
     ImGui::SetNextWindowSize(nws);
-    
+
     ImGui::Begin("Account", 0, imgui_static_window_flags());
     ImGui::Text("Welcome to *Untitled*"); 
     ImGui::Text("please log in or register to continue!");
@@ -46,7 +46,7 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
 	ImGui::End();
 	return quit;
       }
-      
+  
       char request[256];
       strcpy(request, "type=register&username=");
       strcat(request, state->accountInfo.username);
@@ -236,14 +236,11 @@ uint32 render_game_ui(GameMemory* memory, GameState* state) {
       
       ImGui::Begin("Game Over", 0, imgui_static_window_flags());
 
-
       if(state->gameResult != GameResult::NONE) {
 	if(state->gameResult == GameResult::GAME_WON) {
 	  state->accountInfo.score += state->investment * 2;
 	}
 	
-	log_("pizzaslices");
-
 	char id[10];
 	_ltoa(state->accountInfo.id, id, 10);
 	char score[10];
@@ -398,8 +395,6 @@ uint32 game_update(GameState* state, GameInput* input, float64 dt, float64 time)
   if(state->hitpoints <= 0) {
     state->networkMode = false;
     state->gameOver = true;
-
-    log_("AOIJDNAWONDWAJNDWA0");
 
 #if defined(NETWORKING)
     if(state->client.valid) client_player_died(&(state->client), ro);
